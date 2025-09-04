@@ -10,33 +10,31 @@ from open_notebook.graphs.utils import provision_langchain_model
 
 
 class PatternChainState(TypedDict):
-    prompt: str
-    parser: Any | None
-    input_text: str
-    output: str
+  prompt: str
+  parser: Any | None
+  input_text: str
+  output: str
 
 
 async def call_model(state: dict, config: RunnableConfig) -> dict:
-    content = state["input_text"]
-    system_prompt = Prompter(
-        template_text=state["prompt"], parser=state.get("parser")
-    ).render(data=state)
-    payload = [SystemMessage(content=system_prompt), HumanMessage(content=content)]
-    chain = await provision_langchain_model(
-        str(payload),
-        config.get("configurable", {}).get("model_id"),
-        "transformation",
-        max_tokens=5000,
-    )
+  content = state['input_text']
+  system_prompt = Prompter(template_text=state['prompt'], parser=state.get('parser')).render(data=state)
+  payload = [SystemMessage(content=system_prompt), HumanMessage(content=content)]
+  chain = await provision_langchain_model(
+    str(payload),
+    config.get('configurable', {}).get('model_id'),
+    'transformation',
+    max_tokens=5000,
+  )
 
-    response = await chain.ainvoke(payload)
+  response = await chain.ainvoke(payload)
 
-    return {"output": response.content}
+  return {'output': response.content}
 
 
 agent_state = StateGraph(PatternChainState)
-agent_state.add_node("agent", call_model)
-agent_state.add_edge(START, "agent")
-agent_state.add_edge("agent", END)
+agent_state.add_node('agent', call_model)
+agent_state.add_edge(START, 'agent')
+agent_state.add_edge('agent', END)
 
 graph = agent_state.compile()

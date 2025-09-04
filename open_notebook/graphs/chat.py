@@ -16,35 +16,35 @@ from open_notebook.graphs.utils import provision_langchain_model
 
 
 class ThreadState(TypedDict):
-    messages: Annotated[list, add_messages]
-    notebook: Notebook | None
-    context: str | None
-    context_config: dict | None
+  messages: Annotated[list, add_messages]
+  notebook: Notebook | None
+  context: str | None
+  context_config: dict | None
 
 
 def call_model_with_messages(state: ThreadState, config: RunnableConfig) -> dict:
-    system_prompt = Prompter(prompt_template="chat").render(data=state)
-    payload = [SystemMessage(content=system_prompt), *state.get("messages", [])]
-    model = asyncio.run(
-        provision_langchain_model(
-            str(payload),
-            config.get("configurable", {}).get("model_id"),
-            "chat",
-            max_tokens=10000,
-        )
+  system_prompt = Prompter(prompt_template='chat').render(data=state)
+  payload = [SystemMessage(content=system_prompt), *state.get('messages', [])]
+  model = asyncio.run(
+    provision_langchain_model(
+      str(payload),
+      config.get('configurable', {}).get('model_id'),
+      'chat',
+      max_tokens=10000,
     )
-    ai_message = model.invoke(payload)
-    return {"messages": ai_message}
+  )
+  ai_message = model.invoke(payload)
+  return {'messages': ai_message}
 
 
 conn = sqlite3.connect(
-    LANGGRAPH_CHECKPOINT_FILE,
-    check_same_thread=False,
+  LANGGRAPH_CHECKPOINT_FILE,
+  check_same_thread=False,
 )
 memory = SqliteSaver(conn)
 
 agent_state = StateGraph(ThreadState)
-agent_state.add_node("agent", call_model_with_messages)
-agent_state.add_edge(START, "agent")
-agent_state.add_edge("agent", END)
+agent_state.add_node('agent', call_model_with_messages)
+agent_state.add_edge(START, 'agent')
+agent_state.add_edge('agent', END)
 graph = agent_state.compile(checkpointer=memory)

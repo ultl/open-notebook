@@ -1,5 +1,5 @@
-indent-width = 4
-line-length = 88
+indent-width = 2
+line-length = 120
 preview = true
 required-version = '>=0.12.11'
 respect-gitignore = false
@@ -7,7 +7,7 @@ target-version = 'py313'
 
 [format]
 docstring-code-format = true
-quote-style = 'double'
+quote-style = 'single'
 preview = true
 
 [lint]
@@ -26,8 +26,8 @@ ignore = [
 preview = true
 
 [lint.flake8-quotes]
-docstring-quotes = 'double'
-inline-quotes = 'double'
+docstring-quotes = 'single'
+inline-quotes = 'single'
 
 [lint.pydocstyle]
 convention = 'google'
