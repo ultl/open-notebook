@@ -11,31 +11,6 @@ from api.models_service import models_service
 from open_notebook.database.migrate import MigrationManager
 from open_notebook.domain.notebook import ChatSession, Notebook
 from open_notebook.graphs.chat import ThreadState, graph
-from open_notebook.utils import (
-  compare_versions,
-  get_installed_version,
-  get_version_from_github,
-)
-
-
-def version_sidebar() -> None:
-  with st.sidebar:
-    try:
-      current_version = get_installed_version('open-notebook')
-    except Exception:
-      # Fallback to reading directly from pyproject.toml
-      import tomli
-
-      with open('pyproject.toml', 'rb') as f:
-        pyproject = tomli.load(f)
-        current_version = pyproject['project']['version']
-
-    latest_version = get_version_from_github('https://www.github.com/lfnovo/open-notebook', 'main')
-    st.write(f'Open Notebook: {current_version}')
-    if compare_versions(current_version, latest_version) < 0:
-      st.warning(
-        f'New version {latest_version} available. [Click here for upgrade instructions](https://github.com/lfnovo/open-notebook/blob/main/docs/SETUP.md#upgrading-open-notebook)'
-      )
 
 
 def create_session_for_notebook(notebook_id: str, session_name: str | None = None):
@@ -171,8 +146,6 @@ def setup_page(
       only_mandatory=only_check_mandatory_models,
       stop_on_error=stop_on_model_error,
     )
-
-  version_sidebar()
 
 
 def convert_source_references(text):
