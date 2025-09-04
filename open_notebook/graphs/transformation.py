@@ -34,7 +34,7 @@ async def run_transformation(state: dict, config: RunnableConfig) -> dict:
     system_prompt = Prompter(template_text=transformation_template_text).render(
         data=state
     )
-    payload = [SystemMessage(content=system_prompt)] + [HumanMessage(content=content)]
+    payload = [SystemMessage(content=system_prompt), HumanMessage(content=content)]
     chain = await provision_langchain_model(
         str(payload),
         config.get("configurable", {}).get("model_id"),

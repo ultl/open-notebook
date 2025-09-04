@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query
 from loguru import logger
@@ -20,9 +20,11 @@ from open_notebook.graphs.source import source_graph
 router = APIRouter()
 
 
-@router.get("/sources", response_model=List[SourceListResponse])
+@router.get("/sources", response_model=list[SourceListResponse])
 async def get_sources(
-    notebook_id: Optional[str] = Query(None, description="Filter by notebook ID"),
+    notebook_id: Annotated[
+        str | None, Query(description="Filter by notebook ID")
+    ] = None,
 ):
     """Get all sources with optional notebook filtering."""
     try:
@@ -62,8 +64,8 @@ async def get_sources(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching sources: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error fetching sources: {str(e)}")
+        logger.error(f"Error fetching sources: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Error fetching sources: {e!s}")
 
 
 @router.post("/sources", response_model=SourceResponse)
@@ -115,14 +117,12 @@ async def create_source(source_data: SourceCreate):
                 transformations.append(transformation)
 
         # Process source using the source_graph
-        result = await source_graph.ainvoke(
-            {
-                "content_state": content_state,
-                "notebook_id": source_data.notebook_id,
-                "apply_transformations": transformations,
-                "embed": source_data.embed,
-            }
-        )
+        result = await source_graph.ainvoke({
+            "content_state": content_state,
+            "notebook_id": source_data.notebook_id,
+            "apply_transformations": transformations,
+            "embed": source_data.embed,
+        })
 
         source = result["source"]
 
@@ -146,8 +146,8 @@ async def create_source(source_data: SourceCreate):
     except InvalidInputError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error creating source: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error creating source: {str(e)}")
+        logger.error(f"Error creating source: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Error creating source: {e!s}")
 
 
 @router.get("/sources/{source_id}", response_model=SourceResponse)
@@ -176,8 +176,8 @@ async def get_source(source_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching source {source_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error fetching source: {str(e)}")
+        logger.error(f"Error fetching source {source_id}: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Error fetching source: {e!s}")
 
 
 @router.put("/sources/{source_id}", response_model=SourceResponse)
@@ -216,8 +216,8 @@ async def update_source(source_id: str, source_update: SourceUpdate):
     except InvalidInputError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error updating source {source_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error updating source: {str(e)}")
+        logger.error(f"Error updating source {source_id}: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Error updating source: {e!s}")
 
 
 @router.delete("/sources/{source_id}")
@@ -234,18 +234,18 @@ async def delete_source(source_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting source {source_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error deleting source: {str(e)}")
+        logger.error(f"Error deleting source {source_id}: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Error deleting source: {e!s}")
 
 
-@router.get("/sources/{source_id}/insights", response_model=List[SourceInsightResponse])
+@router.get("/sources/{source_id}/insights", response_model=list[SourceInsightResponse])
 async def get_source_insights(source_id: str):
     """Get all insights for a specific source."""
     try:
         source = await Source.get(source_id)
         if not source:
             raise HTTPException(status_code=404, detail="Source not found")
-        
+
         insights = await source.get_insights()
         return [
             SourceInsightResponse(
@@ -254,40 +254,38 @@ async def get_source_insights(source_id: str):
                 insight_type=insight.insight_type,
                 content=insight.content,
                 created=str(insight.created),
-                updated=str(insight.updated)
+                updated=str(insight.updated),
             )
             for insight in insights
         ]
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching insights for source {source_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error fetching insights: {str(e)}")
+        logger.error(f"Error fetching insights for source {source_id}: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Error fetching insights: {e!s}")
 
 
 @router.post("/sources/{source_id}/insights", response_model=SourceInsightResponse)
-async def create_source_insight(
-    source_id: str,
-    request: CreateSourceInsightRequest
-):
+async def create_source_insight(source_id: str, request: CreateSourceInsightRequest):
     """Create a new insight for a source by running a transformation."""
     try:
         # Get source
         source = await Source.get(source_id)
         if not source:
             raise HTTPException(status_code=404, detail="Source not found")
-        
+
         # Get transformation
         transformation = await Transformation.get(request.transformation_id)
         if not transformation:
             raise HTTPException(status_code=404, detail="Transformation not found")
-        
+
         # Run transformation graph
         from open_notebook.graphs.transformation import graph as transform_graph
+
         await transform_graph.ainvoke(
-            input=dict(source=source, transformation=transformation)
+            input={"source": source, "transformation": transformation}
         )
-        
+
         # Get the newly created insight (last one)
         insights = await source.get_insights()
         if insights:
@@ -298,13 +296,12 @@ async def create_source_insight(
                 insight_type=newest.insight_type,
                 content=newest.content,
                 created=str(newest.created),
-                updated=str(newest.updated)
+                updated=str(newest.updated),
             )
-        else:
-            raise HTTPException(status_code=500, detail="Failed to create insight")
-    
+        raise HTTPException(status_code=500, detail="Failed to create insight")
+
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error creating insight for source {source_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error creating insight: {str(e)}")
+        logger.error(f"Error creating insight for source {source_id}: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Error creating insight: {e!s}")

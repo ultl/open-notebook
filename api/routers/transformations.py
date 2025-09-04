@@ -1,5 +1,3 @@
-from typing import List
-
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 
@@ -12,13 +10,13 @@ from api.models import (
 )
 from open_notebook.domain.models import Model
 from open_notebook.domain.transformation import Transformation
-from open_notebook.exceptions import DatabaseOperationError, InvalidInputError
+from open_notebook.exceptions import InvalidInputError
 from open_notebook.graphs.transformation import graph as transformation_graph
 
 router = APIRouter()
 
 
-@router.get("/transformations", response_model=List[TransformationResponse])
+@router.get("/transformations", response_model=list[TransformationResponse])
 async def get_transformations():
     """Get all transformations."""
     try:
@@ -38,9 +36,9 @@ async def get_transformations():
             for transformation in transformations
         ]
     except Exception as e:
-        logger.error(f"Error fetching transformations: {str(e)}")
+        logger.error(f"Error fetching transformations: {e!s}")
         raise HTTPException(
-            status_code=500, detail=f"Error fetching transformations: {str(e)}"
+            status_code=500, detail=f"Error fetching transformations: {e!s}"
         )
 
 
@@ -70,9 +68,9 @@ async def create_transformation(transformation_data: TransformationCreate):
     except InvalidInputError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error creating transformation: {str(e)}")
+        logger.error(f"Error creating transformation: {e!s}")
         raise HTTPException(
-            status_code=500, detail=f"Error creating transformation: {str(e)}"
+            status_code=500, detail=f"Error creating transformation: {e!s}"
         )
 
 
@@ -99,9 +97,9 @@ async def get_transformation(transformation_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching transformation {transformation_id}: {str(e)}")
+        logger.error(f"Error fetching transformation {transformation_id}: {e!s}")
         raise HTTPException(
-            status_code=500, detail=f"Error fetching transformation: {str(e)}"
+            status_code=500, detail=f"Error fetching transformation: {e!s}"
         )
 
 
@@ -146,9 +144,9 @@ async def update_transformation(
     except InvalidInputError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error updating transformation {transformation_id}: {str(e)}")
+        logger.error(f"Error updating transformation {transformation_id}: {e!s}")
         raise HTTPException(
-            status_code=500, detail=f"Error updating transformation: {str(e)}"
+            status_code=500, detail=f"Error updating transformation: {e!s}"
         )
 
 
@@ -166,9 +164,9 @@ async def delete_transformation(transformation_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting transformation {transformation_id}: {str(e)}")
+        logger.error(f"Error deleting transformation {transformation_id}: {e!s}")
         raise HTTPException(
-            status_code=500, detail=f"Error deleting transformation: {str(e)}"
+            status_code=500, detail=f"Error deleting transformation: {e!s}"
         )
 
 
@@ -188,11 +186,11 @@ async def execute_transformation(execute_request: TransformationExecuteRequest):
 
         # Execute the transformation
         result = await transformation_graph.ainvoke(
-            dict(
-                input_text=execute_request.input_text,
-                transformation=transformation,
-            ),
-            config=dict(configurable={"model_id": execute_request.model_id}),
+            {
+                "input_text": execute_request.input_text,
+                "transformation": transformation,
+            },
+            config={"configurable": {"model_id": execute_request.model_id}},
         )
 
         return TransformationExecuteResponse(
@@ -204,7 +202,7 @@ async def execute_transformation(execute_request: TransformationExecuteRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error executing transformation: {str(e)}")
+        logger.error(f"Error executing transformation: {e!s}")
         raise HTTPException(
-            status_code=500, detail=f"Error executing transformation: {str(e)}"
+            status_code=500, detail=f"Error executing transformation: {e!s}"
         )

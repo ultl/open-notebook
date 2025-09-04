@@ -4,11 +4,9 @@ from .async_migrate import AsyncMigrationManager
 
 
 class MigrationManager:
-    """
-    Synchronous wrapper around AsyncMigrationManager for backward compatibility.
-    """
+    """Synchronous wrapper around AsyncMigrationManager for backward compatibility."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize with async migration manager."""
         self._async_manager = AsyncMigrationManager()
 
@@ -21,6 +19,6 @@ class MigrationManager:
         """Check if migration is needed (sync wrapper)."""
         return asyncio.run(self._async_manager.needs_migration())
 
-    def run_migration_up(self):
+    def run_migration_up(self) -> None:
         """Run migrations (sync wrapper)."""
         asyncio.run(self._async_manager.run_migration_up())

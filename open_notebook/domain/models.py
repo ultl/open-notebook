@@ -1,4 +1,4 @@
-from typing import ClassVar, Dict, Optional, Union
+from typing import ClassVar, Union
 
 from esperanto import (
     AIFactory,
@@ -30,14 +30,14 @@ class Model(ObjectModel):
 
 class DefaultModels(RecordModel):
     record_id: ClassVar[str] = "open_notebook:default_models"
-    default_chat_model: Optional[str] = None
-    default_transformation_model: Optional[str] = None
-    large_context_model: Optional[str] = None
-    default_text_to_speech_model: Optional[str] = None
-    default_speech_to_text_model: Optional[str] = None
+    default_chat_model: str | None = None
+    default_transformation_model: str | None = None
+    large_context_model: str | None = None
+    default_text_to_speech_model: str | None = None
+    default_speech_to_text_model: str | None = None
     # default_vision_model: Optional[str]
-    default_embedding_model: Optional[str] = None
-    default_tools_model: Optional[str] = None
+    default_embedding_model: str | None = None
+    default_tools_model: str | None = None
 
 
 class ModelManager:
@@ -45,20 +45,20 @@ class ModelManager:
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(ModelManager, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
         if not hasattr(self, "_initialized"):
             self._initialized = True
-            self._model_cache: Dict[str, ModelType] = {}
+            self._model_cache: dict[str, ModelType] = {}
             self._default_models = None
 
-    async def get_model(self, model_id: str, **kwargs) -> Optional[ModelType]:
+    async def get_model(self, model_id: str, **kwargs) -> ModelType | None:
         if not model_id:
             return None
 
-        cache_key = f"{model_id}:{str(kwargs)}"
+        cache_key = f"{model_id}:{kwargs!s}"
 
         if cache_key in self._model_cache:
             cached_model = self._model_cache[cache_key]
@@ -66,23 +66,24 @@ class ModelManager:
                 cached_model,
                 (LanguageModel, EmbeddingModel, SpeechToTextModel, TextToSpeechModel),
             ):
-                raise TypeError(
-                    f"Cached model is of unexpected type: {type(cached_model)}"
-                )
+                msg = f"Cached model is of unexpected type: {type(cached_model)}"
+                raise TypeError(msg)
             return cached_model
 
         try:
             model: Model = await Model.get(model_id)
         except Exception:
-            raise ValueError(f"Model with ID {model_id} not found")
+            msg = f"Model with ID {model_id} not found"
+            raise ValueError(msg)
 
-        if not model.type or model.type not in [
+        if not model.type or model.type not in {
             "language",
             "embedding",
             "speech_to_text",
             "text_to_speech",
-        ]:
-            raise ValueError(f"Invalid model type: {model.type}")
+        }:
+            msg = f"Invalid model type: {model.type}"
+            raise ValueError(msg)
 
         model_instance: ModelType
         if model.type == "language":
@@ -110,25 +111,27 @@ class ModelManager:
                 config=kwargs,
             )
         else:
-            raise ValueError(f"Invalid model type: {model.type}")
+            msg = f"Invalid model type: {model.type}"
+            raise ValueError(msg)
 
         self._model_cache[cache_key] = model_instance
         return model_instance
 
-    async def refresh_defaults(self):
-        """Refresh the default models from the database"""
+    async def refresh_defaults(self) -> None:
+        """Refresh the default models from the database."""
         self._default_models = await DefaultModels.get_instance()
 
     async def get_defaults(self) -> DefaultModels:
-        """Get the default models configuration"""
+        """Get the default models configuration."""
         if not self._default_models:
             await self.refresh_defaults()
             if not self._default_models:
-                raise RuntimeError("Failed to initialize default models configuration")
+                msg = "Failed to initialize default models configuration"
+                raise RuntimeError(msg)
         return self._default_models
 
-    async def get_speech_to_text(self, **kwargs) -> Optional[SpeechToTextModel]:
-        """Get the default speech-to-text model"""
+    async def get_speech_to_text(self, **kwargs) -> SpeechToTextModel | None:
+        """Get the default speech-to-text model."""
         defaults = await self.get_defaults()
         model_id = defaults.default_speech_to_text_model
         if not model_id:
@@ -139,8 +142,8 @@ class ModelManager:
         )
         return model
 
-    async def get_text_to_speech(self, **kwargs) -> Optional[TextToSpeechModel]:
-        """Get the default text-to-speech model"""
+    async def get_text_to_speech(self, **kwargs) -> TextToSpeechModel | None:
+        """Get the default text-to-speech model."""
         defaults = await self.get_defaults()
         model_id = defaults.default_text_to_speech_model
         if not model_id:
@@ -151,8 +154,8 @@ class ModelManager:
         )
         return model
 
-    async def get_embedding_model(self, **kwargs) -> Optional[EmbeddingModel]:
-        """Get the default embedding model"""
+    async def get_embedding_model(self, **kwargs) -> EmbeddingModel | None:
+        """Get the default embedding model."""
         defaults = await self.get_defaults()
         model_id = defaults.default_embedding_model
         if not model_id:
@@ -163,9 +166,8 @@ class ModelManager:
         )
         return model
 
-    async def get_default_model(self, model_type: str, **kwargs) -> Optional[ModelType]:
-        """
-        Get the default model for a specific type.
+    async def get_default_model(self, model_type: str, **kwargs) -> ModelType | None:
+        """Get the default model for a specific type.
 
         Args:
             model_type: The type of model to retrieve (e.g., 'chat', 'embedding', etc.)
@@ -178,13 +180,10 @@ class ModelManager:
             model_id = defaults.default_chat_model
         elif model_type == "transformation":
             model_id = (
-                defaults.default_transformation_model
-                or defaults.default_chat_model
+                defaults.default_transformation_model or defaults.default_chat_model
             )
         elif model_type == "tools":
-            model_id = (
-                defaults.default_tools_model or defaults.default_chat_model
-            )
+            model_id = defaults.default_tools_model or defaults.default_chat_model
         elif model_type == "embedding":
             model_id = defaults.default_embedding_model
         elif model_type == "text_to_speech":
@@ -199,8 +198,8 @@ class ModelManager:
 
         return await self.get_model(model_id, **kwargs)
 
-    def clear_cache(self):
-        """Clear the model cache"""
+    def clear_cache(self) -> None:
+        """Clear the model cache."""
         self._model_cache.clear()
 
 

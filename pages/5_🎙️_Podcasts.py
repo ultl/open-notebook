@@ -14,7 +14,7 @@ setup_page("🎙️ Podcasts", only_check_mandatory_models=False)
 
 
 @st.dialog("Confirm Delete Episode")
-def confirm_delete_episode(episode_id, episode_name):
+def confirm_delete_episode(episode_id, episode_name) -> None:
     st.warning(f"Are you sure you want to delete episode **{episode_name}**?")
     st.write("This action will:")
     st.write("• Delete the episode from the database")
@@ -37,7 +37,7 @@ def confirm_delete_episode(episode_id, episode_name):
 
 
 @st.dialog("Confirm Delete Speaker Profile")
-def confirm_delete_speaker_profile(profile_id, profile_name):
+def confirm_delete_speaker_profile(profile_id, profile_name) -> None:
     st.warning(f"Are you sure you want to delete speaker profile **{profile_name}**?")
 
     # Check usage before allowing deletion
@@ -48,7 +48,7 @@ def confirm_delete_speaker_profile(profile_id, profile_name):
     usage_count = usage_map.get(profile_name, 0)
 
     if usage_count > 0:
-        st.error(f"❌ **Cannot delete this speaker profile!**")
+        st.error("❌ **Cannot delete this speaker profile!**")
         st.write(
             f"This speaker profile is currently used by **{usage_count} episode profile(s)**."
         )
@@ -57,10 +57,11 @@ def confirm_delete_speaker_profile(profile_id, profile_name):
         st.write("2. Then return here to delete the speaker profile")
 
         # Show which episodes use this speaker
-        using_episodes = []
-        for episode in episode_profiles:
-            if episode.get("speaker_config") == profile_name:
-                using_episodes.append(episode.get("name", "Unknown"))
+        using_episodes = [
+            episode.get("name", "Unknown")
+            for episode in episode_profiles
+            if episode.get("speaker_config") == profile_name
+        ]
 
         if using_episodes:
             st.write("**Episodes using this speaker:**")
@@ -91,7 +92,7 @@ def confirm_delete_speaker_profile(profile_id, profile_name):
 
 
 @st.dialog("Confirm Delete Episode Profile")
-def confirm_delete_episode_profile(profile_id, profile_name):
+def confirm_delete_episode_profile(profile_id, profile_name) -> None:
     st.warning(f"Are you sure you want to delete episode profile **{profile_name}**?")
     st.write("This action cannot be undone.")
 
@@ -111,15 +112,18 @@ def confirm_delete_episode_profile(profile_id, profile_name):
 
 
 @st.fragment
-def speaker_management_fragment():
-    """Fragment for managing speakers within the dialog"""
+def speaker_management_fragment() -> None:
+    """Fragment for managing speakers within the dialog."""
     st.subheader("🎙️ Speakers (1-4 speakers)")
 
     # Add Speaker button at top
     if st.button("➕ Add Speaker", disabled=len(st.session_state.dialog_speakers) >= 4):
-        st.session_state.dialog_speakers.append(
-            {"name": "", "voice_id": "", "backstory": "", "personality": ""}
-        )
+        st.session_state.dialog_speakers.append({
+            "name": "",
+            "voice_id": "",
+            "backstory": "",
+            "personality": "",
+        })
         st.rerun(scope="fragment")
 
     # Display current speakers with individual delete buttons
@@ -169,9 +173,10 @@ def speaker_management_fragment():
 
 
 @st.dialog("Configure Speaker Profile", width="large")
-def speaker_configuration_dialog(mode="create", profile_id=None, episode_context=None):
-    """Unified dialog for speaker profile create/edit/select"""
-
+def speaker_configuration_dialog(
+    mode="create", profile_id=None, episode_context=None
+) -> None:
+    """Unified dialog for speaker profile create/edit/select."""
     # Handle mode switching from select to create
     if st.session_state.get("switch_to_create", False):
         mode = "create"
@@ -384,15 +389,14 @@ def speaker_configuration_dialog(mode="create", profile_id=None, episode_context
             submit_label = "💾 Save Changes" if mode == "edit" else "✅ Create Profile"
             if st.form_submit_button(submit_label):
                 # Validate speakers
-                valid_speakers = []
-                for speaker in st.session_state.dialog_speakers:
-                    if (
-                        speaker.get("name")
-                        and speaker.get("voice_id")
-                        and speaker.get("backstory")
-                        and speaker.get("personality")
-                    ):
-                        valid_speakers.append(speaker)
+                valid_speakers = [
+                    speaker
+                    for speaker in st.session_state.dialog_speakers
+                    if speaker.get("name")
+                    and speaker.get("voice_id")
+                    and speaker.get("backstory")
+                    and speaker.get("personality")
+                ]
 
                 if sp_name and valid_speakers:
                     profile_data = {
@@ -515,7 +519,7 @@ def speaker_configuration_dialog(mode="create", profile_id=None, episode_context
 
 
 def get_status_emoji(status: str) -> str:
-    """Get emoji for job status"""
+    """Get emoji for job status."""
     status_map = {
         "completed": "✅",
         "running": "🔄",
@@ -529,7 +533,7 @@ def get_status_emoji(status: str) -> str:
 
 
 def format_relative_time(created_str: str) -> str:
-    """Format creation time as relative time"""
+    """Format creation time as relative time."""
     try:
         # Parse ISO format datetime
         if created_str.endswith("Z"):
@@ -542,92 +546,91 @@ def format_relative_time(created_str: str) -> str:
 
         if diff.days > 0:
             return f"{diff.days} day{'s' if diff.days > 1 else ''} ago"
-        elif diff.seconds > 3600:
+        if diff.seconds > 3600:
             hours = diff.seconds // 3600
             return f"{hours} hour{'s' if hours > 1 else ''} ago"
-        elif diff.seconds > 60:
+        if diff.seconds > 60:
             minutes = diff.seconds // 60
             return f"{minutes} minute{'s' if minutes > 1 else ''} ago"
-        else:
-            return "Just now"
+        return "Just now"
     except Exception:
         return "Unknown"
 
 
 def fetch_episodes():
-    """Fetch episodes from API"""
+    """Fetch episodes from API."""
     try:
         return podcast_api_service.get_episodes()
     except Exception as e:
-        st.error(f"Error fetching episodes: {str(e)}")
+        st.error(f"Error fetching episodes: {e!s}")
         return []
 
 
 def fetch_episode_profiles():
-    """Fetch episode profiles from API"""
+    """Fetch episode profiles from API."""
     try:
         return podcast_api_service.get_episode_profiles()
     except Exception as e:
-        st.error(f"Error fetching episode profiles: {str(e)}")
+        st.error(f"Error fetching episode profiles: {e!s}")
         return []
 
 
 def fetch_speaker_profiles():
-    """Fetch speaker profiles from API"""
+    """Fetch speaker profiles from API."""
     try:
         return podcast_api_service.get_speaker_profiles()
     except Exception as e:
-        st.error(f"Error fetching speaker profiles: {str(e)}")
+        st.error(f"Error fetching speaker profiles: {e!s}")
         return []
 
 
 def create_episode_profile(profile_data):
-    """Create new episode profile"""
+    """Create new episode profile."""
     return podcast_api_service.create_episode_profile(profile_data)
 
 
 def update_episode_profile(profile_id, profile_data):
-    """Update episode profile"""
+    """Update episode profile."""
     return podcast_api_service.update_episode_profile(profile_id, profile_data)
 
 
 def delete_episode_profile(profile_id):
-    """Delete episode profile"""
+    """Delete episode profile."""
     return podcast_api_service.delete_episode_profile(profile_id)
 
 
 def duplicate_episode_profile(profile_id):
-    """Duplicate episode profile"""
+    """Duplicate episode profile."""
     return podcast_api_service.duplicate_episode_profile(profile_id)
 
 
 def create_speaker_profile(profile_data):
-    """Create new speaker profile"""
+    """Create new speaker profile."""
     return podcast_api_service.create_speaker_profile(profile_data)
 
 
 def update_speaker_profile(profile_id, profile_data):
-    """Update speaker profile"""
+    """Update speaker profile."""
     return podcast_api_service.update_speaker_profile(profile_id, profile_data)
 
 
 def delete_speaker_profile(profile_id):
-    """Delete speaker profile"""
+    """Delete speaker profile."""
     return podcast_api_service.delete_speaker_profile(profile_id)
 
 
 def duplicate_speaker_profile(profile_id):
-    """Duplicate speaker profile"""
+    """Duplicate speaker profile."""
     return podcast_api_service.duplicate_speaker_profile(profile_id)
 
 
 def delete_episode(episode_id):
-    """Delete podcast episode and its audio file"""
+    """Delete podcast episode and its audio file."""
     return podcast_api_service.delete_episode(episode_id)
 
 
 def analyze_speaker_usage(speakers, episodes):
-    """Analyze which speaker profiles are used by episode profiles"""
+    """Analyze which speaker profiles are used by episode profiles."""
     usage_map = {}
     for speaker in speakers:
         speaker_name = speaker.get("name", "")
@@ -641,8 +644,8 @@ def analyze_speaker_usage(speakers, episodes):
     return usage_map
 
 
-def render_speaker_info_inline(speaker_config, speaker_profiles):
-    """Render speaker information inline within episode profile cards"""
+def render_speaker_info_inline(speaker_config, speaker_profiles) -> None:
+    """Render speaker information inline within episode profile cards."""
     if not speaker_config:
         st.warning("⚠️ No speaker profile assigned")
         return
@@ -673,8 +676,8 @@ def render_speaker_info_inline(speaker_config, speaker_profiles):
             )
 
 
-def render_episode_profiles_section():
-    """Render episode profiles in the main area"""
+def render_episode_profiles_section() -> None:
+    """Render episode profiles in the main area."""
     st.subheader("📺 Episode Profiles")
 
     # Fetch data
@@ -752,19 +755,17 @@ def render_episode_profiles_section():
 
             if submitted:
                 if ep_name and ep_speaker_config and ep_briefing:
-                    success = create_episode_profile(
-                        {
-                            "name": ep_name,
-                            "description": ep_description,
-                            "speaker_config": ep_speaker_config,
-                            "outline_provider": outline_provider,
-                            "outline_model": outline_model,
-                            "transcript_provider": transcript_provider,
-                            "transcript_model": transcript_model,
-                            "default_briefing": ep_briefing,
-                            "num_segments": ep_segments,
-                        }
-                    )
+                    success = create_episode_profile({
+                        "name": ep_name,
+                        "description": ep_description,
+                        "speaker_config": ep_speaker_config,
+                        "outline_provider": outline_provider,
+                        "outline_model": outline_model,
+                        "transcript_provider": transcript_provider,
+                        "transcript_model": transcript_model,
+                        "default_briefing": ep_briefing,
+                        "num_segments": ep_segments,
+                    })
                     if success:
                         st.success("Episode profile created successfully!")
                         st.rerun()
@@ -839,7 +840,7 @@ def render_episode_profiles_section():
                     with col5:
                         current_outline_provider = profile.get(
                             "outline_provider",
-                            list(transcript_provider_models.keys())[0],
+                            next(iter(transcript_provider_models.keys())),
                         )
                         outline_idx = (
                             list(transcript_provider_models.keys()).index(
@@ -874,7 +875,7 @@ def render_episode_profiles_section():
                     with col6:
                         current_transcript_provider = profile.get(
                             "transcript_provider",
-                            list(transcript_provider_models.keys())[0],
+                            next(iter(transcript_provider_models.keys())),
                         )
                         transcript_idx = (
                             list(transcript_provider_models.keys()).index(
@@ -977,8 +978,8 @@ def render_episode_profiles_section():
         st.info("No episode profiles found. Create your first episode profile above.")
 
 
-def render_speaker_profiles_sidebar():
-    """Render speaker profiles in the sidebar with usage indicators"""
+def render_speaker_profiles_sidebar() -> None:
+    """Render speaker profiles in the sidebar with usage indicators."""
     st.subheader("🎤 Speaker Profiles")
 
     # New Speaker Profile button
@@ -1003,10 +1004,7 @@ def render_speaker_profiles_sidebar():
         usage_count = usage_map.get(profile_name, 0)
 
         # Usage indicator
-        if usage_count > 0:
-            usage_indicator = f"✅ Used ({usage_count})"
-        else:
-            usage_indicator = "⭕ Unused"
+        usage_indicator = f"✅ Used ({usage_count})" if usage_count > 0 else "⭕ Unused"
 
         with st.expander(f"🎤 {profile_name} {usage_indicator}", expanded=False):
             # Speaker profile summary
@@ -1017,7 +1015,7 @@ def render_speaker_profiles_sidebar():
 
             speakers = profile.get("speakers", [])
             # st.write(f"**Speakers:** {len(speakers)}")
-            for i, speaker in enumerate(speakers):  # Show first 2 speakers only
+            for speaker in speakers:  # Show first 2 speakers only
                 st.markdown(
                     f"- {speaker.get('name', 'Unknown')} ({speaker.get('voice_id', 'N/A')})\n"
                 )
@@ -1092,11 +1090,11 @@ with episodes_tab:
 
         for episode in episodes:
             status = episode.get("job_status", "unknown")
-            if status in ["running", "processing"]:
+            if status in {"running", "processing"}:
                 status_groups["running"].append(episode)
             elif status == "completed":
                 status_groups["completed"].append(episode)
-            elif status in ["failed", "error"]:
+            elif status in {"failed", "error"}:
                 status_groups["failed"].append(episode)
             else:
                 status_groups["pending"].append(episode)
@@ -1158,7 +1156,7 @@ with episodes_tab:
                     try:
                         st.audio(episode["audio_file"], format="audio/mpeg")
                     except Exception as e:
-                        st.error(f"Could not load audio: {str(e)}")
+                        st.error(f"Could not load audio: {e!s}")
 
                 # Episode details in separate expanders
                 with st.expander(f"🎭 Profiles - {episode['name']}", expanded=False):
@@ -1315,15 +1313,15 @@ with templates_tab:
     # Explanatory header about relationships and workflow
     st.markdown("""
     #### Understanding Episode Profiles and Speaker Profiles
-    
+
     **Episode profiles** define the format and AI models for podcast generation, including:
     - Number of segments, outline and transcript AI models
     - Default briefing templates
-    
+
     **Speaker profiles** define the voices and personalities that will be used, including:
     - TTS provider and model settings
     - Individual speaker configurations (name, voice ID, personality, backstory)
-    
+
     **Important**: Episode profiles reference speaker profiles by name. You can either:
     1. **Recommended workflow**: Create speaker profiles first, then create episode profiles that use them
     2. **Alternative**: Create episode profiles and add speaker profiles on-demand via configuration dialogs (coming in later phases)

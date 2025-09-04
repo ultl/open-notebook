@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import HTTPException
 from loguru import logger
@@ -10,18 +10,18 @@ from open_notebook.domain.podcast import EpisodeProfile, PodcastEpisode, Speaker
 
 
 class PodcastGenerationRequest(BaseModel):
-    """Request model for podcast generation"""
+    """Request model for podcast generation."""
 
     episode_profile: str
     speaker_profile: str
     episode_name: str
-    content: Optional[str] = None
-    notebook_id: Optional[str] = None
-    briefing_suffix: Optional[str] = None
+    content: str | None = None
+    notebook_id: str | None = None
+    briefing_suffix: str | None = None
 
 
 class PodcastGenerationResponse(BaseModel):
-    """Response model for podcast generation"""
+    """Response model for podcast generation."""
 
     job_id: str
     status: str
@@ -31,28 +31,30 @@ class PodcastGenerationResponse(BaseModel):
 
 
 class PodcastService:
-    """Service layer for podcast operations"""
+    """Service layer for podcast operations."""
 
     @staticmethod
     async def submit_generation_job(
         episode_profile_name: str,
         speaker_profile_name: str,
         episode_name: str,
-        notebook_id: Optional[str] = None,
-        content: Optional[str] = None,
-        briefing_suffix: Optional[str] = None,
+        notebook_id: str | None = None,
+        content: str | None = None,
+        briefing_suffix: str | None = None,
     ) -> str:
-        """Submit a podcast generation job for background processing"""
+        """Submit a podcast generation job for background processing."""
         try:
             # Validate episode profile exists
             episode_profile = await EpisodeProfile.get_by_name(episode_profile_name)
             if not episode_profile:
-                raise ValueError(f"Episode profile '{episode_profile_name}' not found")
+                msg = f"Episode profile '{episode_profile_name}' not found"
+                raise ValueError(msg)
 
             # Validate speaker profile exists
             speaker_profile = await SpeakerProfile.get_by_name(speaker_profile_name)
             if not speaker_profile:
-                raise ValueError(f"Speaker profile '{speaker_profile_name}' not found")
+                msg = f"Speaker profile '{speaker_profile_name}' not found"
+                raise ValueError(msg)
 
             # Get content from notebook if not provided directly
             if not content and notebook_id:
@@ -71,9 +73,8 @@ class PodcastService:
                     content = f"Notebook ID: {notebook_id}"
 
             if not content:
-                raise ValueError(
-                    "Content is required - provide either content or notebook_id"
-                )
+                msg = "Content is required - provide either content or notebook_id"
+                raise ValueError(msg)
 
             # Prepare command arguments
             command_args = {
@@ -90,7 +91,8 @@ class PodcastService:
                 import commands.podcast_commands  # noqa: F401
             except ImportError as import_err:
                 logger.error(f"Failed to import podcast commands: {import_err}")
-                raise ValueError("Podcast commands not available")
+                msg = "Podcast commands not available"
+                raise ValueError(msg)
 
             # Submit command to surreal-commands
             job_id = submit_command("open_notebook", "generate_podcast", command_args)
@@ -106,12 +108,12 @@ class PodcastService:
             logger.error(f"Failed to submit podcast generation job: {e}")
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to submit podcast generation job: {str(e)}",
+                detail=f"Failed to submit podcast generation job: {e!s}",
             )
 
     @staticmethod
-    async def get_job_status(job_id: str) -> Dict[str, Any]:
-        """Get status of a podcast generation job"""
+    async def get_job_status(job_id: str) -> dict[str, Any]:
+        """Get status of a podcast generation job."""
         try:
             status = await get_command_status(job_id)
             return {
@@ -132,38 +134,36 @@ class PodcastService:
         except Exception as e:
             logger.error(f"Failed to get podcast job status: {e}")
             raise HTTPException(
-                status_code=500, detail=f"Failed to get job status: {str(e)}"
+                status_code=500, detail=f"Failed to get job status: {e!s}"
             )
 
     @staticmethod
     async def list_episodes() -> list:
-        """List all podcast episodes"""
+        """List all podcast episodes."""
         try:
-            episodes = await PodcastEpisode.get_all(order_by="created desc")
-            return episodes
+            return await PodcastEpisode.get_all(order_by="created desc")
         except Exception as e:
             logger.error(f"Failed to list podcast episodes: {e}")
             raise HTTPException(
-                status_code=500, detail=f"Failed to list episodes: {str(e)}"
+                status_code=500, detail=f"Failed to list episodes: {e!s}"
             )
 
     @staticmethod
     async def get_episode(episode_id: str) -> PodcastEpisode:
-        """Get a specific podcast episode"""
+        """Get a specific podcast episode."""
         try:
-            episode = await PodcastEpisode.get(episode_id)
-            return episode
+            return await PodcastEpisode.get(episode_id)
         except Exception as e:
             logger.error(f"Failed to get podcast episode {episode_id}: {e}")
-            raise HTTPException(status_code=404, detail=f"Episode not found: {str(e)}")
+            raise HTTPException(status_code=404, detail=f"Episode not found: {e!s}")
 
 
 class DefaultProfiles:
-    """Utility class for creating default profiles (if needed beyond migration data)"""
+    """Utility class for creating default profiles (if needed beyond migration data)."""
 
     @staticmethod
     async def create_default_episode_profiles():
-        """Create default episode profiles if they don't exist"""
+        """Create default episode profiles if they don't exist."""
         try:
             # Check if profiles already exist
             existing = await EpisodeProfile.get_all()
@@ -184,7 +184,7 @@ class DefaultProfiles:
 
     @staticmethod
     async def create_default_speaker_profiles():
-        """Create default speaker profiles if they don't exist"""
+        """Create default speaker profiles if they don't exist."""
         try:
             # Check if profiles already exist
             existing = await SpeakerProfile.get_all()

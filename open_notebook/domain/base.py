@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, ClassVar, Dict, List, Optional, Type, TypeVar, cast
+from typing import Any, ClassVar, Self, TypeVar, cast
 
 from loguru import logger
 from pydantic import BaseModel, ValidationError, field_validator, model_validator
@@ -23,13 +23,13 @@ T = TypeVar("T", bound="ObjectModel")
 
 
 class ObjectModel(BaseModel):
-    id: Optional[str] = None
+    id: str | None = None
     table_name: ClassVar[str] = ""
-    created: Optional[datetime] = None
-    updated: Optional[datetime] = None
+    created: datetime | None = None
+    updated: datetime | None = None
 
     @classmethod
-    async def get_all(cls: Type[T], order_by=None) -> List[T]:
+    async def get_all(cls, order_by=None) -> list[Self]:
         try:
             # If called from a specific subclass, use its table_name
             if cls.table_name:
@@ -37,9 +37,8 @@ class ObjectModel(BaseModel):
                 table_name = cls.table_name
             else:
                 # This path is taken if called directly from ObjectModel
-                raise InvalidInputError(
-                    "get_all() must be called from a specific model class"
-                )
+                msg = "get_all() must be called from a specific model class"
+                raise InvalidInputError(msg)
             if order_by:
                 query = f"SELECT * FROM {table_name} ORDER BY {order_by}"
             else:
@@ -51,48 +50,51 @@ class ObjectModel(BaseModel):
                 try:
                     objects.append(target_class(**obj))
                 except Exception as e:
-                    logger.critical(f"Error creating object: {str(e)}")
+                    logger.critical(f"Error creating object: {e!s}")
 
             return objects
         except Exception as e:
-            logger.error(f"Error fetching all {cls.table_name}: {str(e)}")
+            logger.error(f"Error fetching all {cls.table_name}: {e!s}")
             logger.exception(e)
             raise DatabaseOperationError(e)
 
     @classmethod
-    async def get(cls: Type[T], id: str) -> T:
+    async def get(cls, id: str) -> Self:
         if not id:
-            raise InvalidInputError("ID cannot be empty")
+            msg = "ID cannot be empty"
+            raise InvalidInputError(msg)
         try:
             # Get the table name from the ID (everything before the first colon)
-            table_name = id.split(":")[0] if ":" in id else id
+            table_name = id.split(":", maxsplit=1)[0] if ":" in id else id
 
             # If we're calling from a specific subclass and IDs match, use that class
             if cls.table_name and cls.table_name == table_name:
-                target_class: Type[T] = cls
+                target_class: type[Self] = cls
             else:
                 # Otherwise, find the appropriate subclass based on table_name
                 found_class = cls._get_class_by_table_name(table_name)
                 if not found_class:
-                    raise InvalidInputError(f"No class found for table {table_name}")
-                target_class = cast(Type[T], found_class)
+                    msg = f"No class found for table {table_name}"
+                    raise InvalidInputError(msg)
+                target_class = cast("type[Self]", found_class)
 
             result = await repo_query("SELECT * FROM $id", {"id": ensure_record_id(id)})
             if result:
                 return target_class(**result[0])
-            else:
-                raise NotFoundError(f"{table_name} with id {id} not found")
+            msg = f"{table_name} with id {id} not found"
+            raise NotFoundError(msg)
         except Exception as e:
-            logger.error(f"Error fetching object with id {id}: {str(e)}")
+            logger.error(f"Error fetching object with id {id}: {e!s}")
             logger.exception(e)
-            raise NotFoundError(f"Object with id {id} not found - {str(e)}")
+            msg = f"Object with id {id} not found - {e!s}"
+            raise NotFoundError(msg)
 
     @classmethod
-    def _get_class_by_table_name(cls, table_name: str) -> Optional[Type["ObjectModel"]]:
+    def _get_class_by_table_name(cls, table_name: str) -> type["ObjectModel"] | None:
         """Find the appropriate subclass based on table_name."""
 
-        def get_all_subclasses(c: Type["ObjectModel"]) -> List[Type["ObjectModel"]]:
-            all_subclasses: List[Type["ObjectModel"]] = []
+        def get_all_subclasses(c: type["ObjectModel"]) -> list[type["ObjectModel"]]:
+            all_subclasses: list[type[ObjectModel]] = []
             for subclass in c.__subclasses__():
                 all_subclasses.append(subclass)
                 all_subclasses.extend(get_all_subclasses(subclass))
@@ -106,7 +108,7 @@ class ObjectModel(BaseModel):
     def needs_embedding(self) -> bool:
         return False
 
-    def get_embedding_content(self) -> Optional[str]:
+    def get_embedding_content(self) -> str | None:
         return None
 
     async def save(self) -> None:
@@ -159,35 +161,38 @@ class ObjectModel(BaseModel):
             logger.error(f"Error saving record: {e}")
             raise DatabaseOperationError(e)
 
-    def _prepare_save_data(self) -> Dict[str, Any]:
+    def _prepare_save_data(self) -> dict[str, Any]:
         data = self.model_dump()
         return {key: value for key, value in data.items() if value is not None}
 
     async def delete(self) -> bool:
         if self.id is None:
-            raise InvalidInputError("Cannot delete object without an ID")
+            msg = "Cannot delete object without an ID"
+            raise InvalidInputError(msg)
         try:
             logger.debug(f"Deleting record with id {self.id}")
             return await repo_delete(self.id)
         except Exception as e:
             logger.error(
-                f"Error deleting {self.__class__.table_name} with id {self.id}: {str(e)}"
+                f"Error deleting {self.__class__.table_name} with id {self.id}: {e!s}"
             )
-            raise DatabaseOperationError(
-                f"Failed to delete {self.__class__.table_name}"
-            )
+            msg = f"Failed to delete {self.__class__.table_name}"
+            raise DatabaseOperationError(msg)
 
     async def relate(
-        self, relationship: str, target_id: str, data: Optional[Dict] = {}
+        self, relationship: str, target_id: str, data: dict | None = None
     ) -> Any:
+        if data is None:
+            data = {}
         if not relationship or not target_id or not self.id:
-            raise InvalidInputError("Relationship and target ID must be provided")
+            msg = "Relationship and target ID must be provided"
+            raise InvalidInputError(msg)
         try:
             return await repo_relate(
                 source=self.id, relationship=relationship, target=target_id, data=data
             )
         except Exception as e:
-            logger.error(f"Error creating relationship: {str(e)}")
+            logger.error(f"Error creating relationship: {e!s}")
             logger.exception(e)
             raise DatabaseOperationError(e)
 
@@ -195,7 +200,7 @@ class ObjectModel(BaseModel):
     @classmethod
     def parse_datetime(cls, value):
         if isinstance(value, str):
-            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+            return datetime.fromisoformat(value)
         return value
 
 
@@ -204,7 +209,7 @@ class RecordModel(BaseModel):
     auto_save: ClassVar[bool] = (
         False  # Default to False, can be overridden in subclasses
     )
-    _instances: ClassVar[Dict[str, "RecordModel"]] = {}  # Store instances by record_id
+    _instances: ClassVar[dict[str, "RecordModel"]] = {}  # Store instances by record_id
 
     class Config:
         validate_assignment = True
@@ -228,7 +233,7 @@ class RecordModel(BaseModel):
         cls._instances[cls.record_id] = instance
         return instance
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         # Only initialize if this is a new instance
         if not hasattr(self, "_initialized"):
             object.__setattr__(self, "__dict__", {})
@@ -241,8 +246,8 @@ class RecordModel(BaseModel):
             object.__setattr__(self, "_initialized", True)
             object.__setattr__(self, "_db_loaded", False)
 
-    async def _load_from_db(self):
-        """Load data from database if not already loaded"""
+    async def _load_from_db(self) -> None:
+        """Load data from database if not already loaded."""
         if not getattr(self, "_db_loaded", False):
             result = await repo_query(
                 "SELECT * FROM ONLY $record_id",
@@ -268,7 +273,7 @@ class RecordModel(BaseModel):
 
     @classmethod
     async def get_instance(cls) -> "RecordModel":
-        """Get or create the singleton instance and load from DB"""
+        """Get or create the singleton instance and load from DB."""
         instance = cls()
         await instance._load_from_db()
         return instance
@@ -311,13 +316,13 @@ class RecordModel(BaseModel):
         return self
 
     @classmethod
-    def clear_instance(cls):
-        """Clear the singleton instance (useful for testing)"""
+    def clear_instance(cls) -> None:
+        """Clear the singleton instance (useful for testing)."""
         if cls.record_id in cls._instances:
             del cls._instances[cls.record_id]
 
-    async def patch(self, model_dict: dict):
-        """Update model attributes from dictionary and save"""
+    async def patch(self, model_dict: dict) -> None:
+        """Update model attributes from dictionary and save."""
         for key, value in model_dict.items():
             setattr(self, key, value)
         await self.update()

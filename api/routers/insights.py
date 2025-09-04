@@ -1,11 +1,9 @@
-from typing import Optional
-
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 
 from api.models import NoteResponse, SaveAsNoteRequest, SourceInsightResponse
-from open_notebook.domain.notebook import Note, SourceInsight
-from open_notebook.exceptions import DatabaseOperationError, InvalidInputError
+from open_notebook.domain.notebook import SourceInsight
+from open_notebook.exceptions import InvalidInputError
 
 router = APIRouter()
 
@@ -17,10 +15,10 @@ async def get_insight(insight_id: str):
         insight = await SourceInsight.get(insight_id)
         if not insight:
             raise HTTPException(status_code=404, detail="Insight not found")
-        
+
         # Get source ID from the insight relationship
         source = await insight.get_source()
-        
+
         return SourceInsightResponse(
             id=insight.id,
             source_id=source.id,
@@ -32,8 +30,8 @@ async def get_insight(insight_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching insight {insight_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error fetching insight: {str(e)}")
+        logger.error(f"Error fetching insight {insight_id}: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Error fetching insight: {e!s}")
 
 
 @router.delete("/insights/{insight_id}")
@@ -43,15 +41,15 @@ async def delete_insight(insight_id: str):
         insight = await SourceInsight.get(insight_id)
         if not insight:
             raise HTTPException(status_code=404, detail="Insight not found")
-        
+
         await insight.delete()
-        
+
         return {"message": "Insight deleted successfully"}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting insight {insight_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error deleting insight: {str(e)}")
+        logger.error(f"Error deleting insight {insight_id}: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Error deleting insight: {e!s}")
 
 
 @router.post("/insights/{insight_id}/save-as-note", response_model=NoteResponse)
@@ -61,10 +59,10 @@ async def save_insight_as_note(insight_id: str, request: SaveAsNoteRequest):
         insight = await SourceInsight.get(insight_id)
         if not insight:
             raise HTTPException(status_code=404, detail="Insight not found")
-        
+
         # Use the existing save_as_note method from the domain model
         note = await insight.save_as_note(request.notebook_id)
-        
+
         return NoteResponse(
             id=note.id,
             title=note.title,
@@ -78,5 +76,7 @@ async def save_insight_as_note(insight_id: str, request: SaveAsNoteRequest):
     except InvalidInputError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error saving insight {insight_id} as note: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error saving insight as note: {str(e)}")
+        logger.error(f"Error saving insight {insight_id} as note: {e!s}")
+        raise HTTPException(
+            status_code=500, detail=f"Error saving insight as note: {e!s}"
+        )

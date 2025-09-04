@@ -1,8 +1,4 @@
-"""
-Models service layer using API.
-"""
-
-from typing import Dict, List, Optional
+"""Models service layer using API."""
 
 from loguru import logger
 
@@ -12,11 +8,11 @@ from open_notebook.domain.models import DefaultModels, Model
 
 class ModelsService:
     """Service layer for models operations using API."""
-    
-    def __init__(self):
+
+    def __init__(self) -> None:
         logger.info("Using API for models operations")
-    
-    def get_all_models(self, model_type: Optional[str] = None) -> List[Model]:
+
+    def get_all_models(self, model_type: str | None = None) -> list[Model]:
         """Get all models with optional type filtering."""
         models_data = api_client.get_models(model_type=model_type)
         # Convert API response to Model objects
@@ -32,7 +28,7 @@ class ModelsService:
             model.updated = model_data["updated"]
             models.append(model)
         return models
-    
+
     def create_model(self, name: str, provider: str, model_type: str) -> Model:
         """Create a new model."""
         model_data = api_client.create_model(name, provider, model_type)
@@ -45,28 +41,34 @@ class ModelsService:
         model.created = model_data["created"]
         model.updated = model_data["updated"]
         return model
-    
+
     def delete_model(self, model_id: str) -> bool:
         """Delete a model."""
         api_client.delete_model(model_id)
         return True
-    
+
     def get_default_models(self) -> DefaultModels:
         """Get default model assignments."""
         defaults_data = api_client.get_default_models()
         defaults = DefaultModels()
-        
+
         # Set the values from API response
         defaults.default_chat_model = defaults_data.get("default_chat_model")
-        defaults.default_transformation_model = defaults_data.get("default_transformation_model")
+        defaults.default_transformation_model = defaults_data.get(
+            "default_transformation_model"
+        )
         defaults.large_context_model = defaults_data.get("large_context_model")
-        defaults.default_text_to_speech_model = defaults_data.get("default_text_to_speech_model")
-        defaults.default_speech_to_text_model = defaults_data.get("default_speech_to_text_model")
+        defaults.default_text_to_speech_model = defaults_data.get(
+            "default_text_to_speech_model"
+        )
+        defaults.default_speech_to_text_model = defaults_data.get(
+            "default_speech_to_text_model"
+        )
         defaults.default_embedding_model = defaults_data.get("default_embedding_model")
         defaults.default_tools_model = defaults_data.get("default_tools_model")
-        
+
         return defaults
-    
+
     def update_default_models(self, defaults: DefaultModels) -> DefaultModels:
         """Update default model assignments."""
         updates = {
@@ -78,18 +80,24 @@ class ModelsService:
             "default_embedding_model": defaults.default_embedding_model,
             "default_tools_model": defaults.default_tools_model,
         }
-        
+
         defaults_data = api_client.update_default_models(**updates)
-        
+
         # Update the defaults object with the response
         defaults.default_chat_model = defaults_data.get("default_chat_model")
-        defaults.default_transformation_model = defaults_data.get("default_transformation_model")
+        defaults.default_transformation_model = defaults_data.get(
+            "default_transformation_model"
+        )
         defaults.large_context_model = defaults_data.get("large_context_model")
-        defaults.default_text_to_speech_model = defaults_data.get("default_text_to_speech_model")
-        defaults.default_speech_to_text_model = defaults_data.get("default_speech_to_text_model")
+        defaults.default_text_to_speech_model = defaults_data.get(
+            "default_text_to_speech_model"
+        )
+        defaults.default_speech_to_text_model = defaults_data.get(
+            "default_speech_to_text_model"
+        )
         defaults.default_embedding_model = defaults_data.get("default_embedding_model")
         defaults.default_tools_model = defaults_data.get("default_tools_model")
-        
+
         return defaults
 
 

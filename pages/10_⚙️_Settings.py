@@ -47,17 +47,17 @@ with st.container(border=True):
             else 0
         ),
     )
-    if not firecrawl_enabled and default_content_processing_engine_url in [
+    if not firecrawl_enabled and default_content_processing_engine_url in {
         "firecrawl",
         "auto",
-    ]:
+    }:
         st.warning(
             "Firecrawl API Key missing. You need to add FIRECRAWL_API_KEY to use it. Get a key at [Firecrawl](https://firecrawl.dev/). If you don't add one, it will default to Jina."
         )
-    if not jina_enabled and default_content_processing_engine_url in [
+    if not jina_enabled and default_content_processing_engine_url in {
         "jina",
         "auto",
-    ]:
+    }:
         st.warning(
             "Jina API Key missing. It will work for a few requests a day, but fallback to simple afterwards. Please add JINA_API_KEY to prevent that. Get a key at [Jina.ai](https://jina.ai/)."
         )

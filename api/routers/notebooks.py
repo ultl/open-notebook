@@ -1,28 +1,32 @@
-from typing import List, Optional
+from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query
 from loguru import logger
 
-from api.models import ErrorResponse, NotebookCreate, NotebookResponse, NotebookUpdate
+from api.models import NotebookCreate, NotebookResponse, NotebookUpdate
 from open_notebook.domain.notebook import Notebook
-from open_notebook.exceptions import DatabaseOperationError, InvalidInputError
+from open_notebook.exceptions import InvalidInputError
 
 router = APIRouter()
 
 
-@router.get("/notebooks", response_model=List[NotebookResponse])
+@router.get("/notebooks", response_model=list[NotebookResponse])
 async def get_notebooks(
-    archived: Optional[bool] = Query(None, description="Filter by archived status"),
-    order_by: str = Query("updated desc", description="Order by field and direction"),
+    archived: Annotated[
+        bool | None, Query(description="Filter by archived status")
+    ] = None,
+    order_by: Annotated[
+        str, Query(description="Order by field and direction")
+    ] = "updated desc",
 ):
     """Get all notebooks with optional filtering and ordering."""
     try:
         notebooks = await Notebook.get_all(order_by=order_by)
-        
+
         # Filter by archived status if specified
         if archived is not None:
             notebooks = [nb for nb in notebooks if nb.archived == archived]
-        
+
         return [
             NotebookResponse(
                 id=nb.id,
@@ -35,8 +39,8 @@ async def get_notebooks(
             for nb in notebooks
         ]
     except Exception as e:
-        logger.error(f"Error fetching notebooks: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error fetching notebooks: {str(e)}")
+        logger.error(f"Error fetching notebooks: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Error fetching notebooks: {e!s}")
 
 
 @router.post("/notebooks", response_model=NotebookResponse)
@@ -48,7 +52,7 @@ async def create_notebook(notebook: NotebookCreate):
             description=notebook.description,
         )
         await new_notebook.save()
-        
+
         return NotebookResponse(
             id=new_notebook.id,
             name=new_notebook.name,
@@ -60,8 +64,8 @@ async def create_notebook(notebook: NotebookCreate):
     except InvalidInputError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error creating notebook: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error creating notebook: {str(e)}")
+        logger.error(f"Error creating notebook: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Error creating notebook: {e!s}")
 
 
 @router.get("/notebooks/{notebook_id}", response_model=NotebookResponse)
@@ -71,7 +75,7 @@ async def get_notebook(notebook_id: str):
         notebook = await Notebook.get(notebook_id)
         if not notebook:
             raise HTTPException(status_code=404, detail="Notebook not found")
-        
+
         return NotebookResponse(
             id=notebook.id,
             name=notebook.name,
@@ -83,8 +87,8 @@ async def get_notebook(notebook_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching notebook {notebook_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error fetching notebook: {str(e)}")
+        logger.error(f"Error fetching notebook {notebook_id}: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Error fetching notebook: {e!s}")
 
 
 @router.put("/notebooks/{notebook_id}", response_model=NotebookResponse)
@@ -94,7 +98,7 @@ async def update_notebook(notebook_id: str, notebook_update: NotebookUpdate):
         notebook = await Notebook.get(notebook_id)
         if not notebook:
             raise HTTPException(status_code=404, detail="Notebook not found")
-        
+
         # Update only provided fields
         if notebook_update.name is not None:
             notebook.name = notebook_update.name
@@ -102,9 +106,9 @@ async def update_notebook(notebook_id: str, notebook_update: NotebookUpdate):
             notebook.description = notebook_update.description
         if notebook_update.archived is not None:
             notebook.archived = notebook_update.archived
-        
+
         await notebook.save()
-        
+
         return NotebookResponse(
             id=notebook.id,
             name=notebook.name,
@@ -118,8 +122,8 @@ async def update_notebook(notebook_id: str, notebook_update: NotebookUpdate):
     except InvalidInputError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error updating notebook {notebook_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error updating notebook: {str(e)}")
+        logger.error(f"Error updating notebook {notebook_id}: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Error updating notebook: {e!s}")
 
 
 @router.delete("/notebooks/{notebook_id}")
@@ -129,12 +133,12 @@ async def delete_notebook(notebook_id: str):
         notebook = await Notebook.get(notebook_id)
         if not notebook:
             raise HTTPException(status_code=404, detail="Notebook not found")
-        
+
         await notebook.delete()
-        
+
         return {"message": "Notebook deleted successfully"}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting notebook {notebook_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error deleting notebook: {str(e)}")
+        logger.error(f"Error deleting notebook {notebook_id}: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Error deleting notebook: {e!s}")

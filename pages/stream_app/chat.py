@@ -20,7 +20,7 @@ from pages.stream_app.utils import (
 from .note import make_note_from_chat
 
 
-# todo: build a smarter, more robust context manager function
+# TODO: build a smarter, more robust context manager function
 def build_context(notebook_id):
     from api.context_service import context_service
 
@@ -32,7 +32,7 @@ def build_context(notebook_id):
             continue
 
         item_type, item_id = id.split(":")
-        if item_type not in ["note", "source"]:
+        if item_type not in {"note", "source"}:
             continue
 
         if item_type == "source":
@@ -66,7 +66,7 @@ def execute_chat(txt_input, context, current_session):
     return result
 
 
-def chat_sidebar(current_notebook: Notebook, current_session: ChatSession):
+def chat_sidebar(current_notebook: Notebook, current_session: ChatSession) -> None:
     context = build_context(notebook_id=current_notebook.id)
     tokens = token_count(
         str(context) + str(st.session_state[current_session.id]["messages"])
@@ -81,7 +81,7 @@ def chat_sidebar(current_notebook: Notebook, current_session: ChatSession):
                 episode_profiles = episode_profiles_service.get_all_episode_profiles()
                 episode_profile_names = [ep.name for ep in episode_profiles]
             except Exception as e:
-                st.error(f"Failed to load episode profiles: {str(e)}")
+                st.error(f"Failed to load episode profiles: {e!s}")
                 episode_profiles = []
                 episode_profile_names = []
 
@@ -121,43 +121,40 @@ def chat_sidebar(current_notebook: Notebook, current_session: ChatSession):
                     st.warning(
                         "No notes or sources found in context. You don't want a boring podcast, right? So, add some context first."
                     )
-                else:
-                    # Generate button
-                    if st.button("🎙️ Generate Podcast", type="primary"):
-                        if not episode_name.strip():
-                            st.error("Please enter an episode name")
-                        else:
-                            try:
-                                with st.spinner("Starting podcast generation..."):
-                                    # Use podcast service to generate podcast
-                                    async def generate_podcast():
-                                        return await PodcastService.submit_generation_job(
-                                            episode_profile_name=selected_episode_profile,
-                                            speaker_profile_name=selected_profile_obj.speaker_config
-                                            if selected_profile_obj
-                                            else "",
-                                            episode_name=episode_name.strip(),
-                                            content=str(context),
-                                            briefing_suffix=instructions.strip()
-                                            if instructions.strip()
-                                            else None,
-                                            notebook_id=str(current_notebook.id),
-                                        )
+                # Generate button
+                elif st.button("🎙️ Generate Podcast", type="primary"):
+                    if not episode_name.strip():
+                        st.error("Please enter an episode name")
+                    else:
+                        try:
+                            with st.spinner("Starting podcast generation..."):
+                                # Use podcast service to generate podcast
+                                async def generate_podcast():
+                                    return await PodcastService.submit_generation_job(
+                                        episode_profile_name=selected_episode_profile,
+                                        speaker_profile_name=selected_profile_obj.speaker_config
+                                        if selected_profile_obj
+                                        else "",
+                                        episode_name=episode_name.strip(),
+                                        content=str(context),
+                                        briefing_suffix=instructions.strip() or None,
+                                        notebook_id=str(current_notebook.id),
+                                    )
 
-                                    job_id = asyncio.run(generate_podcast())
+                                job_id = asyncio.run(generate_podcast())
 
-                                    if job_id:
-                                        st.info(
-                                            "🎉 Podcast generation started successfully! Check the **Podcasts** page to monitor progress and download results."
-                                        )
-                                    else:
-                                        st.error(
-                                            "Failed to start podcast generation: No job ID returned"
-                                        )
+                                if job_id:
+                                    st.info(
+                                        "🎉 Podcast generation started successfully! Check the **Podcasts** page to monitor progress and download results."
+                                    )
+                                else:
+                                    st.error(
+                                        "Failed to start podcast generation: No job ID returned"
+                                    )
 
-                            except Exception as e:
-                                logger.error(f"Error generating podcast: {str(e)}")
-                                st.error(f"Error generating podcast: {str(e)}")
+                        except Exception as e:
+                            logger.error(f"Error generating podcast: {e!s}")
+                            st.error(f"Error generating podcast: {e!s}")
 
             # Navigation link
             st.divider()
@@ -221,7 +218,7 @@ def chat_sidebar(current_notebook: Notebook, current_session: ChatSession):
                 st.session_state[current_session.id]["messages"] = response["messages"]
 
             for msg in st.session_state[current_session.id]["messages"][::-1]:
-                if msg.type not in ["human", "ai"]:
+                if msg.type not in {"human", "ai"}:
                     continue
                 if not msg.content:
                     continue

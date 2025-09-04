@@ -1,4 +1,4 @@
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 from pydantic import Field
 
@@ -16,6 +16,6 @@ class Transformation(ObjectModel):
 
 class DefaultPrompts(RecordModel):
     record_id: ClassVar[str] = "open_notebook:default_prompts"
-    transformation_instructions: Optional[str] = Field(
+    transformation_instructions: str | None = Field(
         None, description="Instructions for executing a transformation"
     )

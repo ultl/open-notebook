@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-Startup script for Open Notebook API server.
-"""
+"""Startup script for Open Notebook API server."""
 
 import os
 import sys
@@ -18,9 +16,6 @@ if __name__ == "__main__":
     host = os.getenv("API_HOST", "127.0.0.1")
     port = int(os.getenv("API_PORT", "5055"))
     reload = os.getenv("API_RELOAD", "true").lower() == "true"
-
-    print(f"Starting Open Notebook API server on {host}:{port}")
-    print(f"Reload mode: {reload}")
 
     uvicorn.run(
         "api.main:app",

@@ -1,6 +1,5 @@
 import time
 from pathlib import Path
-from typing import Optional
 
 from loguru import logger
 from pydantic import BaseModel
@@ -14,7 +13,8 @@ try:
     from podcast_creator import configure, create_podcast
 except ImportError as e:
     logger.error(f"Failed to import podcast_creator: {e}")
-    raise ValueError("podcast_creator library not available")
+    msg = "podcast_creator library not available"
+    raise ValueError(msg)
 
 
 # Add debugging to see if this module is being imported
@@ -25,12 +25,11 @@ logger.info("Registering podcast commands...")
 def full_model_dump(model):
     if isinstance(model, BaseModel):
         return model.model_dump()
-    elif isinstance(model, dict):
+    if isinstance(model, dict):
         return {k: full_model_dump(v) for k, v in model.items()}
-    elif isinstance(model, list):
+    if isinstance(model, list):
         return [full_model_dump(item) for item in model]
-    else:
-        return model
+    return model
 
 
 class PodcastGenerationInput(CommandInput):
@@ -38,26 +37,24 @@ class PodcastGenerationInput(CommandInput):
     speaker_profile: str
     episode_name: str
     content: str
-    briefing_suffix: Optional[str] = None
+    briefing_suffix: str | None = None
 
 
 class PodcastGenerationOutput(CommandOutput):
     success: bool
-    episode_id: Optional[str] = None
-    audio_file_path: Optional[str] = None
-    transcript: Optional[dict] = None
-    outline: Optional[dict] = None
+    episode_id: str | None = None
+    audio_file_path: str | None = None
+    transcript: dict | None = None
+    outline: dict | None = None
     processing_time: float
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 @command("generate_podcast", app="open_notebook")
 async def generate_podcast_command(
     input_data: PodcastGenerationInput,
 ) -> PodcastGenerationOutput:
-    """
-    Real podcast generation using podcast-creator library with Episode Profiles
-    """
+    """Real podcast generation using podcast-creator library with Episode Profiles."""
     start_time = time.time()
 
     try:
@@ -69,17 +66,15 @@ async def generate_podcast_command(
         # 1. Load Episode and Speaker profiles from SurrealDB
         episode_profile = await EpisodeProfile.get_by_name(input_data.episode_profile)
         if not episode_profile:
-            raise ValueError(
-                f"Episode profile '{input_data.episode_profile}' not found"
-            )
+            msg = f"Episode profile '{input_data.episode_profile}' not found"
+            raise ValueError(msg)
 
         speaker_profile = await SpeakerProfile.get_by_name(
             episode_profile.speaker_config
         )
         if not speaker_profile:
-            raise ValueError(
-                f"Speaker profile '{episode_profile.speaker_config}' not found"
-            )
+            msg = f"Speaker profile '{episode_profile.speaker_config}' not found"
+            raise ValueError(msg)
 
         logger.info(f"Loaded episode profile: {episode_profile.name}")
         logger.info(f"Loaded speaker profile: {speaker_profile.name}")

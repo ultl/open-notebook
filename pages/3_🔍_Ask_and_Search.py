@@ -1,3 +1,5 @@
+import operator
+
 import streamlit as st
 
 from api.models_service import ModelsService
@@ -21,7 +23,7 @@ if "ask_results" not in st.session_state:
     st.session_state["ask_results"] = {}
 
 
-def results_card(item):
+def results_card(item) -> None:
     with st.container(border=True):
         st.markdown(
             f"[{item['final_score']:.2f}] **[{item['title']}](/?object_id={item['parent_id']})**"
@@ -91,24 +93,23 @@ with ask_tab:
                     placeholder.error("No answer generated")
 
             except Exception as e:
-                placeholder.error(f"Error processing question: {str(e)}")
+                placeholder.error(f"Error processing question: {e!s}")
 
     if st.session_state["ask_results"].get("answer"):
-        with st.container(border=True):
-            with st.form("save_note_form"):
-                notebook = st.selectbox(
-                    "Notebook",
-                    notebook_service.get_all_notebooks(),
-                    format_func=lambda x: x.name,
+        with st.container(border=True), st.form("save_note_form"):
+            notebook = st.selectbox(
+                "Notebook",
+                notebook_service.get_all_notebooks(),
+                format_func=lambda x: x.name,
+            )
+            if st.form_submit_button("Save Answer as Note"):
+                notes_service.create_note(
+                    title=st.session_state["ask_results"]["question"],
+                    content=st.session_state["ask_results"]["answer"],
+                    note_type="ai",
+                    notebook_id=notebook.id,
                 )
-                if st.form_submit_button("Save Answer as Note"):
-                    notes_service.create_note(
-                        title=st.session_state["ask_results"]["question"],
-                        content=st.session_state["ask_results"]["answer"],
-                        note_type="ai",
-                        notebook_id=notebook.id,
-                    )
-                    st.success("Note saved successfully")
+                st.success("Note saved successfully")
 
 
 with search_tab:
@@ -143,7 +144,7 @@ with search_tab:
             )
 
         # Sort search results by final_score in descending order
-        search_results.sort(key=lambda x: x["final_score"], reverse=True)
+        search_results.sort(key=operator.itemgetter("final_score"), reverse=True)
 
         for item in search_results:
             results_card(item)

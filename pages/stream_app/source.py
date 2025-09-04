@@ -17,12 +17,12 @@ from pages.stream_app.consts import source_context_icons
 
 
 @st.dialog("Source", width="large")
-def source_panel_dialog(source_id, notebook_id=None):
+def source_panel_dialog(source_id, notebook_id=None) -> None:
     source_panel(source_id, notebook_id=notebook_id, modal=True)
 
 
 @st.dialog("Add a Source", width="large")
-def add_source(notebook_id):
+def add_source(notebook_id) -> None:
     default_models = models_service.get_default_models()
     if not default_models.default_speech_to_text_model:
         st.warning(
@@ -83,7 +83,7 @@ def add_source(notebook_id):
                     # Generate unique filename
                     new_path = os.path.join(UPLOADS_FOLDER, file_name)
                     counter = 0
-                    while os.path.exists(new_path):
+                    while Path(new_path).exists():
                         counter += 1
                         new_file_name = f"{base_name}_{counter}{file_extension}"
                         new_path = os.path.join(UPLOADS_FOLDER, new_file_name)
@@ -146,13 +146,13 @@ def add_source(notebook_id):
         st.rerun()
 
 
-def source_card(source, notebook_id):
-    # todo: more descriptive icons
+def source_card(source, notebook_id) -> None:
+    # TODO: more descriptive icons
     icon = "🔗"
 
     with st.container(border=True):
-        title = (source.title if source.title else "No Title").strip()
-        st.markdown((f"{icon}**{title}**"))
+        title = (source.title or "No Title").strip()
+        st.markdown(f"{icon}**{title}**")
         context_state = st.selectbox(
             "Context",
             label_visibility="collapsed",
@@ -171,7 +171,7 @@ def source_card(source, notebook_id):
     st.session_state[notebook_id]["context_config"][source.id] = context_state
 
 
-def source_list_item(source_id, score=None):
+def source_list_item(source_id, score=None) -> None:
     source_with_metadata = sources_service.get_source(source_id)
     source = source_with_metadata.source
     if not source:

@@ -1,4 +1,4 @@
-from typing import ClassVar, List, Optional
+from typing import ClassVar
 
 from loguru import logger
 from podcastfy.client import generate_podcast
@@ -23,15 +23,15 @@ class PodcastConfig(ObjectModel):
     podcast_name: str
     podcast_tagline: str
     output_language: str = Field(default="English")
-    person1_role: List[str]
-    person2_role: List[str]
-    conversation_style: List[str]
-    engagement_technique: List[str]
-    dialogue_structure: List[str]
-    transcript_model: Optional[str] = None
-    transcript_model_provider: Optional[str] = None
-    user_instructions: Optional[str] = None
-    ending_message: Optional[str] = None
+    person1_role: list[str]
+    person2_role: list[str]
+    conversation_style: list[str]
+    engagement_technique: list[str]
+    dialogue_structure: list[str]
+    transcript_model: str | None = None
+    transcript_model_provider: str | None = None
+    user_instructions: str | None = None
+    ending_message: str | None = None
     creativity: float = Field(ge=0, le=1)
     provider: str = Field(default="openai")
     voice1: str
@@ -49,7 +49,8 @@ class PodcastConfig(ObjectModel):
     @model_validator(mode="after")
     def validate_voices(self) -> "PodcastConfig":
         if not self.voice1 or not self.voice2:
-            raise ValueError("Both voice1 and voice2 must be provided")
+            msg = "Both voice1 and voice2 must be provided"
+            raise ValueError(msg)
         return self
 
     async def generate_episode(
@@ -60,10 +61,8 @@ class PodcastConfig(ObjectModel):
         longform: bool = False,
         chunks: int = 8,
         min_chunk_size=600,
-    ):
-        self.user_instructions = (
-            instructions if instructions else self.user_instructions
-        )
+    ) -> None:
+        self.user_instructions = instructions or self.user_instructions
         conversation_config = {
             "max_num_chunks": chunks,
             "min_chunk_size": min_chunk_size,
@@ -153,13 +152,15 @@ class PodcastConfig(ObjectModel):
     @classmethod
     def validate_required_strings(cls, value: str, field) -> str:
         if value is None or value.strip() == "":
-            raise ValueError(f"{field.field_name} cannot be None or empty string")
+            msg = f"{field.field_name} cannot be None or empty string"
+            raise ValueError(msg)
         return value.strip()
 
     @field_validator("creativity")
-    def validate_creativity(cls, value):
+    def validate_creativity(self, value):
         if not 0 <= value <= 1:
-            raise ValueError("Creativity must be between 0 and 1")
+            msg = "Creativity must be between 0 and 1"
+            raise ValueError(msg)
         return value
 
 

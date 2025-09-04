@@ -1,9 +1,6 @@
-"""
-Async migration system for SurrealDB using the official Python client.
+"""Async migration system for SurrealDB using the official Python client.
 Based on patterns from sblpy migration system.
 """
-
-from typing import List
 
 from loguru import logger
 
@@ -11,9 +8,7 @@ from .repository import db_connection, repo_query
 
 
 class AsyncMigration:
-    """
-    Handles individual migration operations with async support.
-    """
+    """Handles individual migration operations with async support."""
 
     def __init__(self, sql: str) -> None:
         """Initialize migration with SQL content."""
@@ -22,7 +17,7 @@ class AsyncMigration:
     @classmethod
     def from_file(cls, file_path: str) -> "AsyncMigration":
         """Create migration from SQL file."""
-        with open(file_path, "r") as file:
+        with open(file_path, encoding="utf-8") as file:
             raw_content = file.read()
             # Clean up SQL content
             lines = []
@@ -45,19 +40,17 @@ class AsyncMigration:
                 await lower_version()
 
         except Exception as e:
-            logger.error(f"Migration failed: {str(e)}")
+            logger.error(f"Migration failed: {e!s}")
             raise
 
 
 class AsyncMigrationRunner:
-    """
-    Handles running multiple migrations in sequence.
-    """
+    """Handles running multiple migrations in sequence."""
 
     def __init__(
         self,
-        up_migrations: List[AsyncMigration],
-        down_migrations: List[AsyncMigration],
+        up_migrations: list[AsyncMigration],
+        down_migrations: list[AsyncMigration],
     ) -> None:
         """Initialize runner with migration lists."""
         self.up_migrations = up_migrations
@@ -89,11 +82,9 @@ class AsyncMigrationRunner:
 
 
 class AsyncMigrationManager:
-    """
-    Main migration manager with async support.
-    """
+    """Main migration manager with async support."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize migration manager."""
         self.up_migrations = [
             AsyncMigration.from_file("migrations/1.surrealql"),
@@ -127,7 +118,7 @@ class AsyncMigrationManager:
         current_version = await self.get_current_version()
         return current_version < len(self.up_migrations)
 
-    async def run_migration_up(self):
+    async def run_migration_up(self) -> None:
         """Run all pending migrations."""
         current_version = await self.get_current_version()
         logger.info(f"Current version before migration: {current_version}")
@@ -138,7 +129,7 @@ class AsyncMigrationManager:
                 new_version = await self.get_current_version()
                 logger.info(f"Migration successful. New version: {new_version}")
             except Exception as e:
-                logger.error(f"Migration failed: {str(e)}")
+                logger.error(f"Migration failed: {e!s}")
                 raise
         else:
             logger.info("Database is already at the latest version")
@@ -157,11 +148,10 @@ async def get_latest_version() -> int:
         return 0
 
 
-async def get_all_versions() -> List[dict]:
+async def get_all_versions() -> list[dict]:
     """Get all versions from the migrations table."""
     try:
-        result = await repo_query("SELECT * FROM _sbl_migrations ORDER BY version;")
-        return result
+        return await repo_query("SELECT * FROM _sbl_migrations ORDER BY version;")
     except Exception:
         # If table doesn't exist, return empty list
         return []

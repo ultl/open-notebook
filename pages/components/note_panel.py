@@ -11,7 +11,7 @@ models_service = ModelsService()
 notes_service = NotesService()
 
 
-def note_panel(note_id, notebook_id=None):
+def note_panel(note_id, notebook_id=None) -> None:
     default_models = models_service.get_default_models()
     if not default_models.default_embedding_model:
         st.warning(
@@ -19,7 +19,8 @@ def note_panel(note_id, notebook_id=None):
         )
     note = notes_service.get_note(note_id)
     if not note:
-        raise ValueError(f"Note not fonud {note_id}")
+        msg = f"Note not fonud {note_id}"
+        raise ValueError(msg)
     t_preview, t_edit = st.tabs(["Preview", "Edit"])
     with t_preview:
         st.subheader(note.title)

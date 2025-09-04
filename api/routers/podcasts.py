@@ -1,4 +1,3 @@
-from typing import List, Optional
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -10,7 +9,6 @@ from api.podcast_service import (
     PodcastGenerationResponse,
     PodcastService,
 )
-from open_notebook.domain.podcast import PodcastEpisode
 
 router = APIRouter()
 
@@ -21,17 +19,16 @@ class PodcastEpisodeResponse(BaseModel):
     episode_profile: dict
     speaker_profile: dict
     briefing: str
-    audio_file: Optional[str] = None
-    transcript: Optional[dict] = None
-    outline: Optional[dict] = None
-    created: Optional[str] = None
-    job_status: Optional[str] = None
+    audio_file: str | None = None
+    transcript: dict | None = None
+    outline: dict | None = None
+    created: str | None = None
+    job_status: str | None = None
 
 
 @router.post("/podcasts/generate", response_model=PodcastGenerationResponse)
 async def generate_podcast(request: PodcastGenerationRequest):
-    """
-    Generate a podcast episode using Episode Profiles.
+    """Generate a podcast episode using Episode Profiles.
     Returns immediately with job ID for status tracking.
     """
     try:
@@ -53,29 +50,28 @@ async def generate_podcast(request: PodcastGenerationRequest):
         )
 
     except Exception as e:
-        logger.error(f"Error generating podcast: {str(e)}")
+        logger.error(f"Error generating podcast: {e!s}")
         raise HTTPException(
-            status_code=500, detail=f"Failed to generate podcast: {str(e)}"
+            status_code=500, detail=f"Failed to generate podcast: {e!s}"
         )
 
 
 @router.get("/podcasts/jobs/{job_id}")
 async def get_podcast_job_status(job_id: str):
-    """Get the status of a podcast generation job"""
+    """Get the status of a podcast generation job."""
     try:
-        status_data = await PodcastService.get_job_status(job_id)
-        return status_data
+        return await PodcastService.get_job_status(job_id)
 
     except Exception as e:
-        logger.error(f"Error fetching podcast job status: {str(e)}")
+        logger.error(f"Error fetching podcast job status: {e!s}")
         raise HTTPException(
-            status_code=500, detail=f"Failed to fetch job status: {str(e)}"
+            status_code=500, detail=f"Failed to fetch job status: {e!s}"
         )
 
 
-@router.get("/podcasts/episodes", response_model=List[PodcastEpisodeResponse])
+@router.get("/podcasts/episodes", response_model=list[PodcastEpisodeResponse])
 async def list_podcast_episodes():
-    """List all podcast episodes"""
+    """List all podcast episodes."""
     try:
         episodes = await PodcastService.list_episodes()
 
@@ -84,7 +80,7 @@ async def list_podcast_episodes():
             # Skip incomplete episodes without command or audio
             if not episode.command and not episode.audio_file:
                 continue
-            
+
             # Get job status if available
             job_status = None
             if episode.command:
@@ -114,15 +110,15 @@ async def list_podcast_episodes():
         return response_episodes
 
     except Exception as e:
-        logger.error(f"Error listing podcast episodes: {str(e)}")
+        logger.error(f"Error listing podcast episodes: {e!s}")
         raise HTTPException(
-            status_code=500, detail=f"Failed to list podcast episodes: {str(e)}"
+            status_code=500, detail=f"Failed to list podcast episodes: {e!s}"
         )
 
 
 @router.get("/podcasts/episodes/{episode_id}", response_model=PodcastEpisodeResponse)
 async def get_podcast_episode(episode_id: str):
-    """Get a specific podcast episode"""
+    """Get a specific podcast episode."""
     try:
         episode = await PodcastService.get_episode(episode_id)
 
@@ -151,17 +147,17 @@ async def get_podcast_episode(episode_id: str):
         )
 
     except Exception as e:
-        logger.error(f"Error fetching podcast episode: {str(e)}")
-        raise HTTPException(status_code=404, detail=f"Episode not found: {str(e)}")
+        logger.error(f"Error fetching podcast episode: {e!s}")
+        raise HTTPException(status_code=404, detail=f"Episode not found: {e!s}")
 
 
 @router.delete("/podcasts/episodes/{episode_id}")
 async def delete_podcast_episode(episode_id: str):
-    """Delete a podcast episode and its associated audio file"""
+    """Delete a podcast episode and its associated audio file."""
     try:
         # Get the episode first to check if it exists and get the audio file path
         episode = await PodcastService.get_episode(episode_id)
-        
+
         # Delete the physical audio file if it exists
         if episode.audio_file:
             audio_path = Path(episode.audio_file)
@@ -171,13 +167,13 @@ async def delete_podcast_episode(episode_id: str):
                     logger.info(f"Deleted audio file: {audio_path}")
                 except Exception as e:
                     logger.warning(f"Failed to delete audio file {audio_path}: {e}")
-        
+
         # Delete the episode from the database
         await episode.delete()
-        
+
         logger.info(f"Deleted podcast episode: {episode_id}")
         return {"message": "Episode deleted successfully", "episode_id": episode_id}
-        
+
     except Exception as e:
-        logger.error(f"Error deleting podcast episode: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to delete episode: {str(e)}")
+        logger.error(f"Error deleting podcast episode: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete episode: {e!s}")

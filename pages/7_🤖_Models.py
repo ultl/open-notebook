@@ -86,7 +86,7 @@ st.divider()
 
 
 # Helper function to add model with auto-save
-def add_model_form(model_type, container_key, configured_providers):
+def add_model_form(model_type, container_key, configured_providers) -> None:
     # Get providers that Esperanto supports for this model type
     esperanto_providers = esperanto_available_providers.get(model_type, [])
     # Filter to only show providers that have API keys configured
@@ -117,13 +117,12 @@ def add_model_form(model_type, container_key, configured_providers):
             help="gpt-4o-mini, claude, gemini, llama3, etc. For azure, use the deployment_name as the model_name",
         )
 
-        if st.form_submit_button("Add Model"):
-            if model_name:
-                models_service.create_model(
-                    name=model_name, provider=provider, model_type=model_type
-                )
-                st.success("Model added!")
-                st.rerun()
+        if st.form_submit_button("Add Model") and model_name:
+            models_service.create_model(
+                name=model_name, provider=provider, model_type=model_type
+            )
+            st.success("Model added!")
+            st.rerun()
 
 
 # Helper function to handle default model selection with auto-save
@@ -168,7 +167,7 @@ for model in all_models:
 
 
 st.markdown("""
-**Model Management Guide:** For optimal performance, refer to [Which model to choose?](https://github.com/lfnovo/open-notebook/blob/main/docs/models.md) 
+**Model Management Guide:** For optimal performance, refer to [Which model to choose?](https://github.com/lfnovo/open-notebook/blob/main/docs/models.md)
 You can test models in the [Transformations](Transformations) page.
 """)
 

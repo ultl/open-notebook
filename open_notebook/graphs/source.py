@@ -1,5 +1,5 @@
 import operator
-from typing import Any, Dict, List, Optional
+from typing import Annotated, Any
 
 from content_core import extract_content
 from content_core.common import ProcessSourceState
@@ -7,7 +7,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
 from loguru import logger
-from typing_extensions import Annotated, TypedDict
+from typing_extensions import TypedDict
 
 from open_notebook.domain.content_settings import ContentSettings
 from open_notebook.domain.notebook import Asset, Source
@@ -17,7 +17,7 @@ from open_notebook.graphs.transformation import graph as transform_graph
 
 class SourceState(TypedDict):
     content_state: ProcessSourceState
-    apply_transformations: List[Transformation]
+    apply_transformations: list[Transformation]
     notebook_id: str
     source: Source
     transformation: Annotated[list, operator.add]
@@ -31,7 +31,7 @@ class TransformationState(TypedDict):
 
 async def content_process(state: SourceState) -> dict:
     content_settings = ContentSettings()
-    content_state: Dict[str, Any] = state["content_state"]
+    content_state: dict[str, Any] = state["content_state"]
 
     content_state["url_engine"] = (
         content_settings.default_content_processing_engine_url or "auto"
@@ -66,7 +66,7 @@ async def save_source(state: SourceState) -> dict:
     return {"source": source}
 
 
-def trigger_transformations(state: SourceState, config: RunnableConfig) -> List[Send]:
+def trigger_transformations(state: SourceState, config: RunnableConfig) -> list[Send]:
     if len(state["apply_transformations"]) == 0:
         return []
 
@@ -85,7 +85,7 @@ def trigger_transformations(state: SourceState, config: RunnableConfig) -> List[
     ]
 
 
-async def transform_content(state: TransformationState) -> Optional[dict]:
+async def transform_content(state: TransformationState) -> dict | None:
     source = state["source"]
     content = source.full_text
     if not content:
@@ -93,9 +93,10 @@ async def transform_content(state: TransformationState) -> Optional[dict]:
     transformation: Transformation = state["transformation"]
 
     logger.debug(f"Applying transformation {transformation.name}")
-    result = await transform_graph.ainvoke(
-        dict(input_text=content, transformation=transformation)
-    )
+    result = await transform_graph.ainvoke({
+        "input_text": content,
+        "transformation": transformation,
+    })
     await source.add_insight(transformation.title, result["output"])
     return {
         "transformation": [

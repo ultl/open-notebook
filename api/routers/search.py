@@ -1,5 +1,4 @@
-import asyncio
-from typing import AsyncGenerator, Dict
+from collections.abc import AsyncGenerator
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -51,29 +50,29 @@ async def search_knowledge_base(search_request: SearchRequest):
     except InvalidInputError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except DatabaseOperationError as e:
-        logger.error(f"Database error during search: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+        logger.error(f"Database error during search: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {e!s}")
     except Exception as e:
-        logger.error(f"Unexpected error during search: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+        logger.error(f"Unexpected error during search: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {e!s}")
 
 
 async def stream_ask_response(
     question: str, strategy_model: Model, answer_model: Model, final_answer_model: Model
-) -> AsyncGenerator[str, None]:
+) -> AsyncGenerator[str]:
     """Stream the ask response as Server-Sent Events."""
     try:
         final_answer = None
 
         async for chunk in ask_graph.astream(
-            input=dict(question=question),
-            config=dict(
-                configurable=dict(
-                    strategy_model=strategy_model.id,
-                    answer_model=answer_model.id,
-                    final_answer_model=final_answer_model.id,
-                )
-            ),
+            input={"question": question},
+            config={
+                "configurable": {
+                    "strategy_model": strategy_model.id,
+                    "answer_model": answer_model.id,
+                    "final_answer_model": final_answer_model.id,
+                }
+            },
             stream_mode="updates",
         ):
             if "agent" in chunk:
@@ -101,7 +100,7 @@ async def stream_ask_response(
         yield f"data: {{'type': 'complete', 'final_answer': '{final_answer}'}}\n\n"
 
     except Exception as e:
-        logger.error(f"Error in ask streaming: {str(e)}")
+        logger.error(f"Error in ask streaming: {e!s}")
         error_data = {"type": "error", "message": str(e)}
         yield f"data: {error_data}\n\n"
 
@@ -149,8 +148,8 @@ async def ask_knowledge_base(ask_request: AskRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error in ask endpoint: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Ask operation failed: {str(e)}")
+        logger.error(f"Error in ask endpoint: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Ask operation failed: {e!s}")
 
 
 @router.post("/search/ask/simple", response_model=AskResponse)
@@ -188,14 +187,14 @@ async def ask_knowledge_base_simple(ask_request: AskRequest):
         # Run the ask graph and get final result
         final_answer = None
         async for chunk in ask_graph.astream(
-            input=dict(question=ask_request.question),
-            config=dict(
-                configurable=dict(
-                    strategy_model=strategy_model.id,
-                    answer_model=answer_model.id,
-                    final_answer_model=final_answer_model.id,
-                )
-            ),
+            input={"question": ask_request.question},
+            config={
+                "configurable": {
+                    "strategy_model": strategy_model.id,
+                    "answer_model": answer_model.id,
+                    "final_answer_model": final_answer_model.id,
+                }
+            },
             stream_mode="updates",
         ):
             if "write_final_answer" in chunk:
@@ -209,5 +208,5 @@ async def ask_knowledge_base_simple(ask_request: AskRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error in ask simple endpoint: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Ask operation failed: {str(e)}")
+        logger.error(f"Error in ask simple endpoint: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Ask operation failed: {e!s}")

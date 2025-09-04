@@ -1,5 +1,5 @@
 import operator
-from typing import Annotated, List
+from typing import Annotated
 
 from ai_prompter import Prompter
 from langchain_core.output_parsers.pydantic import PydanticOutputParser
@@ -35,7 +35,7 @@ class Search(BaseModel):
 
 class Strategy(BaseModel):
     reasoning: str
-    searches: List[Search] = Field(
+    searches: list[Search] = Field(
         default_factory=list,
         description="You can add up to five searches to this strategy",
     )
@@ -58,7 +58,7 @@ async def call_model_with_messages(state: ThreadState, config: RunnableConfig) -
         config.get("configurable", {}).get("strategy_model"),
         "tools",
         max_tokens=2000,
-        structured=dict(type="json"),
+        structured={"type": "json"},
     )
     # model = model.bind_tools(tools)
     # First get the raw response from the model

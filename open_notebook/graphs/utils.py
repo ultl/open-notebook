@@ -9,11 +9,10 @@ from open_notebook.utils import token_count
 async def provision_langchain_model(
     content, model_id, default_type, **kwargs
 ) -> BaseChatModel:
-    """
-    Returns the best model to use based on the context size and on whether there is a specific model being requested in Config.
+    """Returns the best model to use based on the context size and on whether there is a specific model being requested in Config.
     If context > 105_000, returns the large_context_model
     If model_id is specified in Config, returns that model
-    Otherwise, returns the default model for the given type
+    Otherwise, returns the default model for the given type.
     """
     tokens = token_count(content)
 

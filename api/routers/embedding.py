@@ -23,7 +23,7 @@ async def embed_content(embed_request: EmbedRequest):
         item_type = embed_request.item_type.lower()
 
         # Validate item type
-        if item_type not in ["source", "note"]:
+        if item_type not in {"source", "note"}:
             raise HTTPException(
                 status_code=400, detail="Item type must be either 'source' or 'note'"
             )
@@ -62,8 +62,6 @@ async def embed_content(embed_request: EmbedRequest):
         raise
     except Exception as e:
         logger.error(
-            f"Error embedding {embed_request.item_type} {embed_request.item_id}: {str(e)}"
+            f"Error embedding {embed_request.item_type} {embed_request.item_id}: {e!s}"
         )
-        raise HTTPException(
-            status_code=500, detail=f"Error embedding content: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error embedding content: {e!s}")

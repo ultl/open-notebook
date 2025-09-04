@@ -1,9 +1,6 @@
-"""
-Sources service layer using API.
-"""
+"""Sources service layer using API."""
 
 from dataclasses import dataclass
-from typing import List, Optional
 
 from loguru import logger
 
@@ -14,38 +11,39 @@ from open_notebook.domain.notebook import Asset, Source
 @dataclass
 class SourceWithMetadata:
     """Source object with additional metadata from API."""
+
     source: Source
     embedded_chunks: int
-    
+
     # Expose common source properties for easy access
     @property
     def id(self):
         return self.source.id
-    
-    @property  
+
+    @property
     def title(self):
         return self.source.title
-        
+
     @title.setter
-    def title(self, value):
+    def title(self, value) -> None:
         self.source.title = value
-    
+
     @property
     def topics(self):
         return self.source.topics
-    
+
     @property
     def asset(self):
         return self.source.asset
-    
+
     @property
     def full_text(self):
         return self.source.full_text
-    
+
     @property
     def created(self):
         return self.source.created
-    
+
     @property
     def updated(self):
         return self.source.updated
@@ -54,10 +52,12 @@ class SourceWithMetadata:
 class SourcesService:
     """Service layer for sources operations using API."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         logger.info("Using API for sources operations")
 
-    def get_all_sources(self, notebook_id: Optional[str] = None) -> List[SourceWithMetadata]:
+    def get_all_sources(
+        self, notebook_id: str | None = None
+    ) -> list[SourceWithMetadata]:
         """Get all sources with optional notebook filtering."""
         sources_data = api_client.get_sources(notebook_id=notebook_id)
         # Convert API response to SourceWithMetadata objects
@@ -78,11 +78,10 @@ class SourcesService:
             source.id = source_data["id"]
             source.created = source_data["created"]
             source.updated = source_data["updated"]
-            
+
             # Wrap in SourceWithMetadata
             source_with_metadata = SourceWithMetadata(
-                source=source,
-                embedded_chunks=source_data.get("embedded_chunks", 0)
+                source=source, embedded_chunks=source_data.get("embedded_chunks", 0)
             )
             sources.append(source_with_metadata)
         return sources
@@ -106,21 +105,20 @@ class SourcesService:
         source.id = source_data["id"]
         source.created = source_data["created"]
         source.updated = source_data["updated"]
-        
+
         return SourceWithMetadata(
-            source=source,
-            embedded_chunks=source_data.get("embedded_chunks", 0)
+            source=source, embedded_chunks=source_data.get("embedded_chunks", 0)
         )
 
     def create_source(
         self,
         notebook_id: str,
         source_type: str,
-        url: Optional[str] = None,
-        file_path: Optional[str] = None,
-        content: Optional[str] = None,
-        title: Optional[str] = None,
-        transformations: Optional[List[str]] = None,
+        url: str | None = None,
+        file_path: str | None = None,
+        content: str | None = None,
+        title: str | None = None,
+        transformations: list[str] | None = None,
         embed: bool = False,
         delete_source: bool = False,
     ) -> Source:
@@ -158,8 +156,9 @@ class SourcesService:
     def update_source(self, source: Source) -> Source:
         """Update a source."""
         if not source.id:
-            raise ValueError("Source ID is required for update")
-            
+            msg = "Source ID is required for update"
+            raise ValueError(msg)
+
         updates = {
             "title": source.title,
             "topics": source.topics,

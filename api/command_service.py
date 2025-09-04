@@ -1,22 +1,20 @@
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 from surreal_commands import get_command_status, submit_command
 
-from api.models import ErrorResponse
-
 
 class CommandService:
-    """Generic service layer for command operations"""
+    """Generic service layer for command operations."""
 
     @staticmethod
     async def submit_command_job(
         module_name: str,  # Actually app_name for surreal-commands
         command_name: str,
-        command_args: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None,
+        command_args: dict[str, Any],
+        context: dict[str, Any] | None = None,
     ) -> str:
-        """Submit a generic command job for background processing"""
+        """Submit a generic command job for background processing."""
         try:
             # Ensure command modules are imported before submitting
             # This is needed because submit_command validates against local registry
@@ -24,7 +22,8 @@ class CommandService:
                 import commands.podcast_commands  # noqa: F401
             except ImportError as import_err:
                 logger.error(f"Failed to import command modules: {import_err}")
-                raise ValueError("Command modules not available")
+                msg = "Command modules not available"
+                raise ValueError(msg)
 
             # surreal-commands expects: submit_command(app_name, command_name, args)
             cmd_id = submit_command(
@@ -44,8 +43,8 @@ class CommandService:
             raise
 
     @staticmethod
-    async def get_command_status(job_id: str) -> Dict[str, Any]:
-        """Get status of any command job"""
+    async def get_command_status(job_id: str) -> dict[str, Any]:
+        """Get status of any command job."""
         try:
             status = await get_command_status(job_id)
             return {
@@ -69,19 +68,19 @@ class CommandService:
 
     @staticmethod
     async def list_command_jobs(
-        module_filter: Optional[str] = None,
-        command_filter: Optional[str] = None,
-        status_filter: Optional[str] = None,
+        module_filter: str | None = None,
+        command_filter: str | None = None,
+        status_filter: str | None = None,
         limit: int = 50,
-    ) -> List[Dict[str, Any]]:
-        """List command jobs with optional filtering"""
+    ) -> list[dict[str, Any]]:
+        """List command jobs with optional filtering."""
         # This will be implemented with proper SurrealDB queries
         # For now, return empty list as this is foundation phase
         return []
 
     @staticmethod
     async def cancel_command_job(job_id: str) -> bool:
-        """Cancel a running command job"""
+        """Cancel a running command job."""
         try:
             # Implementation depends on surreal-commands cancellation support
             # For now, just log the attempt

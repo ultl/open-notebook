@@ -1,6 +1,6 @@
 import asyncio
 import sqlite3
-from typing import Annotated, Optional
+from typing import Annotated
 
 from ai_prompter import Prompter
 from langchain_core.messages import SystemMessage
@@ -17,14 +17,14 @@ from open_notebook.graphs.utils import provision_langchain_model
 
 class ThreadState(TypedDict):
     messages: Annotated[list, add_messages]
-    notebook: Optional[Notebook]
-    context: Optional[str]
-    context_config: Optional[dict]
+    notebook: Notebook | None
+    context: str | None
+    context_config: dict | None
 
 
 def call_model_with_messages(state: ThreadState, config: RunnableConfig) -> dict:
     system_prompt = Prompter(prompt_template="chat").render(data=state)
-    payload = [SystemMessage(content=system_prompt)] + state.get("messages", [])
+    payload = [SystemMessage(content=system_prompt), *state.get("messages", [])]
     model = asyncio.run(
         provision_langchain_model(
             str(payload),

@@ -1,19 +1,22 @@
-import asyncio
-
 import nest_asyncio
 import streamlit as st
 
 nest_asyncio.apply()
 
+from typing import TYPE_CHECKING
+
 from api.insights_service import insights_service
 from api.sources_service import sources_service
-from open_notebook.domain.notebook import SourceInsight
+
+if TYPE_CHECKING:
+    from open_notebook.domain.notebook import SourceInsight
 
 
-def source_insight_panel(source, notebook_id=None):
+def source_insight_panel(source, notebook_id=None) -> None:
     si: SourceInsight = insights_service.get_insight(source)
     if not si:
-        raise ValueError(f"insight not found {source}")
+        msg = f"insight not found {source}"
+        raise ValueError(msg)
     st.subheader(si.insight_type)
     with st.container(border=True):
         # Get source information using the source_id from the insight

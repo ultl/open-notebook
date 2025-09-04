@@ -1,12 +1,9 @@
-from typing import Dict, List, Union
-
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 
 from api.models import ContextRequest, ContextResponse
-from open_notebook.domain.base import ObjectModel
 from open_notebook.domain.notebook import Note, Notebook, Source
-from open_notebook.exceptions import DatabaseOperationError, InvalidInputError
+from open_notebook.exceptions import InvalidInputError
 from open_notebook.utils import token_count
 
 router = APIRouter()
@@ -41,7 +38,7 @@ async def get_notebook_context(notebook_id: str, context_request: ContextRequest
 
                     try:
                         source = await Source.get(full_source_id)
-                    except Exception as e:
+                    except Exception:
                         continue
 
                     if "insights" in status:
@@ -53,7 +50,7 @@ async def get_notebook_context(notebook_id: str, context_request: ContextRequest
                         context_data["source"].append(source_context)
                         total_content += str(source_context)
                 except Exception as e:
-                    logger.warning(f"Error processing source {source_id}: {str(e)}")
+                    logger.warning(f"Error processing source {source_id}: {e!s}")
                     continue
 
             # Process notes
@@ -75,7 +72,7 @@ async def get_notebook_context(notebook_id: str, context_request: ContextRequest
                         context_data["note"].append(note_context)
                         total_content += str(note_context)
                 except Exception as e:
-                    logger.warning(f"Error processing note {note_id}: {str(e)}")
+                    logger.warning(f"Error processing note {note_id}: {e!s}")
                     continue
         else:
             # Default behavior - include all sources and notes with short context
@@ -86,7 +83,7 @@ async def get_notebook_context(notebook_id: str, context_request: ContextRequest
                     context_data["source"].append(source_context)
                     total_content += str(source_context)
                 except Exception as e:
-                    logger.warning(f"Error processing source {source.id}: {str(e)}")
+                    logger.warning(f"Error processing source {source.id}: {e!s}")
                     continue
 
             notes = await notebook.get_notes()
@@ -96,7 +93,7 @@ async def get_notebook_context(notebook_id: str, context_request: ContextRequest
                     context_data["note"].append(note_context)
                     total_content += str(note_context)
                 except Exception as e:
-                    logger.warning(f"Error processing note {note.id}: {str(e)}")
+                    logger.warning(f"Error processing note {note.id}: {e!s}")
                     continue
 
         # Calculate estimated token count
@@ -114,5 +111,5 @@ async def get_notebook_context(notebook_id: str, context_request: ContextRequest
     except InvalidInputError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error getting context for notebook {notebook_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error getting context: {str(e)}")
+        logger.error(f"Error getting context for notebook {notebook_id}: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Error getting context: {e!s}")
