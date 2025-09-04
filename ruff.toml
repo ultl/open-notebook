@@ -1,0 +1,33 @@
+indent-width = 4
+line-length = 88
+preview = true
+required-version = '>=0.12.11'
+respect-gitignore = false
+target-version = 'py313'
+
+[format]
+docstring-code-format = true
+quote-style = 'double'
+preview = true
+
+[lint]
+select = ['ALL']
+ignore = [
+  'COM812',
+  'CPY001',
+  'D100',
+  'D103',
+  'DOC201',
+  'E111',
+  'E114',
+  'E501',
+  'Q002',
+]
+preview = true
+
+[lint.flake8-quotes]
+docstring-quotes = 'double'
+inline-quotes = 'double'
+
+[lint.pydocstyle]
+convention = 'google'
