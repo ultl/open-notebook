@@ -4,17 +4,12 @@ from __future__ import annotations
 import argparse
 import asyncio
 
-
-def ensure_pgvector() -> int:
-  import scripts.ensure_pgvector as tool
-
-  return tool.main()
+import scripts.ensure_pgvector as tool
+from open_notebook.database.seed import seed_defaults
+from open_notebook.database.sql import SessionLocal, init_db
 
 
 async def seed() -> None:
-  from open_notebook.database.seed import seed_defaults
-  from open_notebook.database.sql import SessionLocal, init_db
-
   await init_db()
   async with SessionLocal() as session:
     await seed_defaults(session)
@@ -30,7 +25,7 @@ def main() -> int:
   args = parser.parse_args()
 
   if args.cmd == 'ensure-pgvector':
-    return ensure_pgvector()
+    return tool.main()
   if args.cmd == 'seed':
     asyncio.run(seed())
     return 0

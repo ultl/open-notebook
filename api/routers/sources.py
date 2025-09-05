@@ -78,9 +78,7 @@ async def get_sources(
 
 
 @router.post('/sources', response_model=SourceResponse)
-async def create_source(
-  source_data: SourceCreate, session: Annotated[AsyncSession, Depends(get_session)]
-) -> SourceResponse:
+async def create_source(source_data: SourceCreate, session: AsyncSession = Depends(get_session)) -> SourceResponse:
   """Create a new source."""
   try:
     # Verify notebook exists
@@ -147,7 +145,7 @@ async def create_source(
 
 
 @router.get('/sources/{source_id}', response_model=SourceResponse)
-async def get_source(source_id: str, session: Annotated[AsyncSession, Depends(get_session)]) -> SourceResponse:
+async def get_source(source_id: str, session: AsyncSession = Depends(get_session)) -> SourceResponse:
   """Get a specific source by ID."""
   try:
     source = (await session.execute(select(Source).where(Source.id == source_id))).scalar_one_or_none()
@@ -178,7 +176,7 @@ async def get_source(source_id: str, session: Annotated[AsyncSession, Depends(ge
 
 @router.put('/sources/{source_id}', response_model=SourceResponse)
 async def update_source(
-  source_id: str, source_update: SourceUpdate, session: Annotated[AsyncSession, Depends(get_session)]
+  source_id: str, source_update: SourceUpdate, session: AsyncSession = Depends(get_session)
 ) -> SourceResponse:
   """Update a source."""
   try:
@@ -219,7 +217,7 @@ async def update_source(
 
 
 @router.delete('/sources/{source_id}')
-async def delete_source(source_id: str, session: Annotated[AsyncSession, Depends(get_session)]) -> dict[str, str]:
+async def delete_source(source_id: str, session: AsyncSession = Depends(get_session)) -> dict[str, str]:
   """Delete a source."""
   try:
     source = (await session.execute(select(Source).where(Source.id == source_id))).scalar_one_or_none()
@@ -245,7 +243,7 @@ async def delete_source(source_id: str, session: Annotated[AsyncSession, Depends
 
 @router.get('/sources/{source_id}/insights', response_model=list[SourceInsightResponse])
 async def get_source_insights(
-  source_id: str, session: Annotated[AsyncSession, Depends(get_session)]
+  source_id: str, session: AsyncSession = Depends(get_session)
 ) -> list[SourceInsightResponse]:
   """Get all insights for a specific source."""
   try:
@@ -276,7 +274,7 @@ async def get_source_insights(
 
 @router.post('/sources/{source_id}/insights', response_model=SourceInsightResponse)
 async def create_source_insight(
-  source_id: str, request: CreateSourceInsightRequest, session: Annotated[AsyncSession, Depends(get_session)]
+  source_id: str, request: CreateSourceInsightRequest, session: AsyncSession = Depends(get_session)
 ) -> SourceInsightResponse:
   """Create a new insight for a source by running a transformation."""
   try:

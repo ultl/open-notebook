@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
@@ -24,7 +24,7 @@ router = APIRouter()
 
 
 @router.get('/transformations', response_model=list[TransformationResponse])
-async def get_transformations(session: Annotated[AsyncSession, Depends(get_session)]) -> list[TransformationResponse]:
+async def get_transformations(session: AsyncSession = Depends(get_session)) -> list[TransformationResponse]:
   """Get all transformations."""
   try:
     result = await session.execute(select(Transformation))
@@ -50,7 +50,7 @@ async def get_transformations(session: Annotated[AsyncSession, Depends(get_sessi
 
 @router.post('/transformations', response_model=TransformationResponse)
 async def create_transformation(
-  transformation_data: TransformationCreate, session: Annotated[AsyncSession, Depends(get_session)]
+  transformation_data: TransformationCreate, session: AsyncSession = Depends(get_session)
 ) -> TransformationResponse:
   """Create a new transformation."""
   try:
@@ -82,7 +82,7 @@ async def create_transformation(
 
 @router.get('/transformations/{transformation_id}', response_model=TransformationResponse)
 async def get_transformation(
-  transformation_id: str, session: Annotated[AsyncSession, Depends(get_session)]
+  transformation_id: str, session: AsyncSession = Depends(get_session)
 ) -> TransformationResponse:
   """Get a specific transformation by ID."""
   try:
@@ -112,7 +112,7 @@ async def get_transformation(
 async def update_transformation(
   transformation_id: str,
   transformation_update: TransformationUpdate,
-  session: Annotated[AsyncSession, Depends(get_session)],
+  session: AsyncSession = Depends(get_session),
 ) -> TransformationResponse:
   """Update a transformation."""
   try:
@@ -157,9 +157,7 @@ async def update_transformation(
 
 
 @router.delete('/transformations/{transformation_id}')
-async def delete_transformation(
-  transformation_id: str, session: Annotated[AsyncSession, Depends(get_session)]
-) -> dict[str, str]:
+async def delete_transformation(transformation_id: str, session: AsyncSession = Depends(get_session)) -> dict[str, str]:
   """Delete a transformation."""
   try:
     result = await session.execute(select(Transformation).where(Transformation.id == transformation_id))
@@ -180,7 +178,7 @@ async def delete_transformation(
 
 @router.post('/transformations/execute', response_model=TransformationExecuteResponse)
 async def execute_transformation(
-  execute_request: TransformationExecuteRequest, session: Annotated[AsyncSession, Depends(get_session)]
+  execute_request: TransformationExecuteRequest, session: AsyncSession = Depends(get_session)
 ) -> TransformationExecuteResponse:
   """Execute a transformation on input text."""
   try:

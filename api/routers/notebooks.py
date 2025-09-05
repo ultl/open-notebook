@@ -50,9 +50,7 @@ async def get_notebooks(
 
 
 @router.post('/notebooks', response_model=NotebookResponse)
-async def create_notebook(
-  notebook: NotebookCreate, session: Annotated[AsyncSession, Depends(get_session)]
-) -> NotebookResponse:
+async def create_notebook(notebook: NotebookCreate, session: AsyncSession = Depends(get_session)) -> NotebookResponse:
   """Create a new notebook."""
   try:
     new_notebook = Notebook(name=notebook.name, description=notebook.description)
@@ -74,7 +72,7 @@ async def create_notebook(
 
 
 @router.get('/notebooks/{notebook_id}', response_model=NotebookResponse)
-async def get_notebook(notebook_id: str, session: Annotated[AsyncSession, Depends(get_session)]) -> NotebookResponse:
+async def get_notebook(notebook_id: str, session: AsyncSession = Depends(get_session)) -> NotebookResponse:
   """Get a specific notebook by ID."""
   try:
     try:
@@ -100,7 +98,7 @@ async def get_notebook(notebook_id: str, session: Annotated[AsyncSession, Depend
 
 @router.put('/notebooks/{notebook_id}', response_model=NotebookResponse)
 async def update_notebook(
-  notebook_id: str, notebook_update: NotebookUpdate, session: Annotated[AsyncSession, Depends(get_session)]
+  notebook_id: str, notebook_update: NotebookUpdate, session: AsyncSession = Depends(get_session)
 ) -> NotebookResponse:
   """Update a notebook."""
   try:
@@ -140,7 +138,7 @@ async def update_notebook(
 
 
 @router.delete('/notebooks/{notebook_id}')
-async def delete_notebook(notebook_id: str, session: Annotated[AsyncSession, Depends(get_session)]) -> dict[str, str]:
+async def delete_notebook(notebook_id: str, session: AsyncSession = Depends(get_session)) -> dict[str, str]:
   """Delete a notebook."""
   try:
     try:

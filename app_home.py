@@ -55,7 +55,7 @@ def ui_notes(client: APIClient) -> None:
   nb_name = st.selectbox('Notebook (optional)', ['', *list(nb_map.keys())])
   nb_id = nb_map.get(nb_name) or None
   with st.expander('➕ New Note'):
-    title = st.text_input('Title')
+    title = st.text_input('Title', key='note_title')
     content = st.text_area('Content')
     if st.button('Create Note', type='primary') and content:
       client.create_note(content=content, title=title or None, note_type='human', notebook_id=nb_id)
@@ -77,10 +77,12 @@ def ui_sources(client: APIClient) -> None:
   notebooks = client.get_notebooks()
   nb_map = {n['name']: n['id'] for n in notebooks}
   nb_name = st.selectbox('Notebook', list(nb_map.keys()))
+  if not nb_name:
+    return
   nb_id = nb_map[nb_name]
   with st.expander('➕ New Source'):
     src_type = st.selectbox('Type', ['text', 'link'])
-    title = st.text_input('Title')
+    title = st.text_input('Title', key='src_title')
     url = st.text_input('URL') if src_type == 'link' else None
     content = st.text_area('Content') if src_type == 'text' else None
     embed = st.checkbox('Embed for vector search', value=False)
@@ -161,7 +163,7 @@ def ui_transformations(client: APIClient) -> None:
   st.header('💱 Transformations')
   with st.expander('➕ New Transformation'):
     name = st.text_input('Name')
-    title = st.text_input('Title')
+    title = st.text_input('Title', key='transformation_title')
     desc = st.text_area('Description')
     prompt = st.text_area('Prompt')
     if st.button('Create', type='primary') and name and title and prompt:
@@ -206,9 +208,7 @@ def ui_settings(client: APIClient) -> None:
 def main() -> None:
   load_dotenv()
   setup_page('Open Notebook')
-  st.sidebar.title('Open Notebook')
-  base_url = st.sidebar.text_input('API Base URL', os.getenv('API_BASE_URL', 'http://127.0.0.1:5055'))
-  api_client.base_url = base_url
+  api_client.base_url = os.getenv('API_BASE_URL', 'http://127.0.0.1:5055')
 
   tabs = st.tabs([
     '📒 Notebooks',

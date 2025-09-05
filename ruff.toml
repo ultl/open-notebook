@@ -24,6 +24,7 @@ ignore = [
   'E111',
   'E114',
   'E501',
+  'FAST002',
   'Q002',
 ]
 preview = true

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
@@ -17,7 +17,7 @@ router = APIRouter()
 
 
 @router.get('/insights/{insight_id}', response_model=SourceInsightResponse)
-async def get_insight(insight_id: str, session: Annotated[AsyncSession, Depends(get_session)]) -> SourceInsightResponse:
+async def get_insight(insight_id: str, session: AsyncSession = Depends(get_session)) -> SourceInsightResponse:
   """Get a specific insight by ID."""
   try:
     insight = (await session.execute(select(SourceInsight).where(SourceInsight.id == insight_id))).scalar_one_or_none()
@@ -40,7 +40,7 @@ async def get_insight(insight_id: str, session: Annotated[AsyncSession, Depends(
 
 
 @router.delete('/insights/{insight_id}')
-async def delete_insight(insight_id: str, session: Annotated[AsyncSession, Depends(get_session)]) -> dict[str, str]:
+async def delete_insight(insight_id: str, session: AsyncSession = Depends(get_session)) -> dict[str, str]:
   """Delete a specific insight."""
   try:
     insight = (await session.execute(select(SourceInsight).where(SourceInsight.id == insight_id))).scalar_one_or_none()
@@ -60,7 +60,7 @@ async def delete_insight(insight_id: str, session: Annotated[AsyncSession, Depen
 
 @router.post('/insights/{insight_id}/save-as-note', response_model=NoteResponse)
 async def save_insight_as_note(
-  insight_id: str, request: SaveAsNoteRequest, session: Annotated[AsyncSession, Depends(get_session)]
+  insight_id: str, request: SaveAsNoteRequest, session: AsyncSession = Depends(get_session)
 ) -> NoteResponse:
   """Convert an insight to a note."""
   try:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
@@ -30,7 +30,7 @@ class EpisodeProfileResponse(BaseModel):
 
 
 @router.get('/episode-profiles', response_model=list[EpisodeProfileResponse])
-async def list_episode_profiles(session: Annotated[AsyncSession, Depends(get_session)]) -> list[EpisodeProfileResponse]:
+async def list_episode_profiles(session: AsyncSession = Depends(get_session)) -> list[EpisodeProfileResponse]:
   """List all available episode profiles."""
   try:
     profiles = list((await session.execute(select(EpisodeProfile))).scalars().all())
@@ -58,7 +58,7 @@ async def list_episode_profiles(session: Annotated[AsyncSession, Depends(get_ses
 
 @router.get('/episode-profiles/{profile_name}', response_model=EpisodeProfileResponse)
 async def get_episode_profile(
-  profile_name: str, session: Annotated[AsyncSession, Depends(get_session)]
+  profile_name: str, session: AsyncSession = Depends(get_session)
 ) -> EpisodeProfileResponse:
   """Get a specific episode profile by name."""
   try:
@@ -103,7 +103,7 @@ class EpisodeProfileCreate(BaseModel):
 
 @router.post('/episode-profiles', response_model=EpisodeProfileResponse)
 async def create_episode_profile(
-  profile_data: EpisodeProfileCreate, session: Annotated[AsyncSession, Depends(get_session)]
+  profile_data: EpisodeProfileCreate, session: AsyncSession = Depends(get_session)
 ) -> EpisodeProfileResponse:
   """Create a new episode profile."""
   try:
@@ -142,7 +142,7 @@ async def create_episode_profile(
 
 @router.put('/episode-profiles/{profile_id}', response_model=EpisodeProfileResponse)
 async def update_episode_profile(
-  profile_id: str, profile_data: EpisodeProfileCreate, session: Annotated[AsyncSession, Depends(get_session)]
+  profile_id: str, profile_data: EpisodeProfileCreate, session: AsyncSession = Depends(get_session)
 ) -> EpisodeProfileResponse:
   """Update an existing episode profile."""
   try:
@@ -189,9 +189,7 @@ async def update_episode_profile(
 
 
 @router.delete('/episode-profiles/{profile_id}')
-async def delete_episode_profile(
-  profile_id: str, session: Annotated[AsyncSession, Depends(get_session)]
-) -> dict[str, str]:
+async def delete_episode_profile(profile_id: str, session: AsyncSession = Depends(get_session)) -> dict[str, str]:
   """Delete an episode profile."""
   try:
     profile = (
@@ -215,7 +213,7 @@ async def delete_episode_profile(
 
 @router.post('/episode-profiles/{profile_id}/duplicate', response_model=EpisodeProfileResponse)
 async def duplicate_episode_profile(
-  profile_id: str, session: Annotated[AsyncSession, Depends(get_session)]
+  profile_id: str, session: AsyncSession = Depends(get_session)
 ) -> EpisodeProfileResponse:
   """Duplicate an episode profile."""
   try:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
@@ -46,9 +47,7 @@ async def get_models(
 
 
 @router.post('/models', response_model=ModelResponse)
-async def create_model(
-  model_data: ModelCreate, session: Annotated[AsyncSession, Depends(get_session)]
-) -> ModelResponse:
+async def create_model(model_data: ModelCreate, session: AsyncSession = Depends(get_session)) -> ModelResponse:
   """Create a new model configuration."""
   try:
     # Validate model type
@@ -78,7 +77,7 @@ async def create_model(
 
 
 @router.delete('/models/{model_id}')
-async def delete_model(model_id: str, session: Annotated[AsyncSession, Depends(get_session)]) -> dict[str, str]:
+async def delete_model(model_id: str, session: AsyncSession = Depends(get_session)) -> dict[str, str]:
   """Delete a model configuration."""
   try:
     result = await session.execute(select(AIModel).where(AIModel.id == model_id))
@@ -97,7 +96,7 @@ async def delete_model(model_id: str, session: Annotated[AsyncSession, Depends(g
 
 
 @router.get('/models/defaults', response_model=DefaultModelsResponse)
-async def get_default_models(session: Annotated[AsyncSession, Depends(get_session)]) -> DefaultModelsResponse:
+async def get_default_models(session: AsyncSession = Depends(get_session)) -> DefaultModelsResponse:
   """Get default model assignments."""
   try:
     # Ensure singleton row exists
@@ -110,13 +109,19 @@ async def get_default_models(session: Annotated[AsyncSession, Depends(get_sessio
       await session.refresh(defaults)
 
     return DefaultModelsResponse(
-      default_chat_model=defaults.default_chat_model,
-      default_transformation_model=defaults.default_transformation_model,
-      large_context_model=defaults.large_context_model,
-      default_text_to_speech_model=defaults.default_text_to_speech_model,
-      default_speech_to_text_model=defaults.default_speech_to_text_model,
-      default_embedding_model=defaults.default_embedding_model,
-      default_tools_model=defaults.default_tools_model,
+      default_chat_model=str(defaults.default_chat_model) if defaults.default_chat_model else None,
+      default_transformation_model=str(defaults.default_transformation_model)
+      if defaults.default_transformation_model
+      else None,
+      large_context_model=str(defaults.large_context_model) if defaults.large_context_model else None,
+      default_text_to_speech_model=str(defaults.default_text_to_speech_model)
+      if defaults.default_text_to_speech_model
+      else None,
+      default_speech_to_text_model=str(defaults.default_speech_to_text_model)
+      if defaults.default_speech_to_text_model
+      else None,
+      default_embedding_model=str(defaults.default_embedding_model) if defaults.default_embedding_model else None,
+      default_tools_model=str(defaults.default_tools_model) if defaults.default_tools_model else None,
     )
   except Exception as e:
     logger.error(f'Error fetching default models: {e!s}')
@@ -125,7 +130,7 @@ async def get_default_models(session: Annotated[AsyncSession, Depends(get_sessio
 
 @router.put('/models/defaults', response_model=DefaultModelsResponse)
 async def update_default_models(
-  defaults_data: DefaultModelsResponse, session: Annotated[AsyncSession, Depends(get_session)]
+  defaults_data: DefaultModelsResponse, session: AsyncSession = Depends(get_session)
 ) -> DefaultModelsResponse:
   """Update default model assignments."""
   try:
@@ -138,32 +143,38 @@ async def update_default_models(
 
     # Update only provided fields
     if defaults_data.default_chat_model is not None:
-      defaults.default_chat_model = defaults_data.default_chat_model
+      defaults.default_chat_model = UUID(defaults_data.default_chat_model)
     if defaults_data.default_transformation_model is not None:
-      defaults.default_transformation_model = defaults_data.default_transformation_model
+      defaults.default_transformation_model = UUID(defaults_data.default_transformation_model)
     if defaults_data.large_context_model is not None:
-      defaults.large_context_model = defaults_data.large_context_model
+      defaults.large_context_model = UUID(defaults_data.large_context_model)
     if defaults_data.default_text_to_speech_model is not None:
-      defaults.default_text_to_speech_model = defaults_data.default_text_to_speech_model
+      defaults.default_text_to_speech_model = UUID(defaults_data.default_text_to_speech_model)
     if defaults_data.default_speech_to_text_model is not None:
-      defaults.default_speech_to_text_model = defaults_data.default_speech_to_text_model
+      defaults.default_speech_to_text_model = UUID(defaults_data.default_speech_to_text_model)
     if defaults_data.default_embedding_model is not None:
-      defaults.default_embedding_model = defaults_data.default_embedding_model
+      defaults.default_embedding_model = UUID(defaults_data.default_embedding_model)
     if defaults_data.default_tools_model is not None:
-      defaults.default_tools_model = defaults_data.default_tools_model
+      defaults.default_tools_model = UUID(defaults_data.default_tools_model)
 
     session.add(defaults)
     await session.commit()
     await session.refresh(defaults)
 
     return DefaultModelsResponse(
-      default_chat_model=defaults.default_chat_model,
-      default_transformation_model=defaults.default_transformation_model,
-      large_context_model=defaults.large_context_model,
-      default_text_to_speech_model=defaults.default_text_to_speech_model,
-      default_speech_to_text_model=defaults.default_speech_to_text_model,
-      default_embedding_model=defaults.default_embedding_model,
-      default_tools_model=defaults.default_tools_model,
+      default_chat_model=str(defaults.default_chat_model) if defaults.default_chat_model else None,
+      default_transformation_model=str(defaults.default_transformation_model)
+      if defaults.default_transformation_model
+      else None,
+      large_context_model=str(defaults.large_context_model) if defaults.large_context_model else None,
+      default_text_to_speech_model=str(defaults.default_text_to_speech_model)
+      if defaults.default_text_to_speech_model
+      else None,
+      default_speech_to_text_model=str(defaults.default_speech_to_text_model)
+      if defaults.default_speech_to_text_model
+      else None,
+      default_embedding_model=str(defaults.default_embedding_model) if defaults.default_embedding_model else None,
+      default_tools_model=str(defaults.default_tools_model) if defaults.default_tools_model else None,
     )
   except HTTPException:
     raise

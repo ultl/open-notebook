@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
@@ -19,7 +19,7 @@ router = APIRouter()
 
 @router.post('/search', response_model=SearchResponse)
 async def search_knowledge_base(
-  search_request: SearchRequest, session: Annotated[AsyncSession, Depends(get_session)]
+  search_request: SearchRequest, session: AsyncSession = Depends(get_session)
 ) -> SearchResponse:
   """Search the knowledge base using text or vector search."""
   try:

@@ -20,7 +20,7 @@ def _database_url() -> str:
   url = getenv('DATABASE_URL')
   if not url:
     # Provide a sensible default for local development
-    url = 'postgresql+psycopg://postgres:postgres@127.0.0.1:5432/open_notebook'
+    url = 'postgresql+psycopg://postgres:pw@127.0.0.1:5432/postgres'
   return url
 
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
@@ -17,7 +17,7 @@ router = APIRouter()
 
 
 @router.get('/settings', response_model=SettingsResponse)
-async def get_settings(session: Annotated[AsyncSession, Depends(get_session)]) -> SettingsResponse:
+async def get_settings(session: AsyncSession = Depends(get_session)) -> SettingsResponse:
   """Get all application settings."""
   try:
     result = await session.execute(select(ContentSettings).where(ContentSettings.id == 1))
@@ -42,7 +42,7 @@ async def get_settings(session: Annotated[AsyncSession, Depends(get_session)]) -
 
 @router.put('/settings', response_model=SettingsResponse)
 async def update_settings(
-  settings_update: SettingsUpdate, session: Annotated[AsyncSession, Depends(get_session)]
+  settings_update: SettingsUpdate, session: AsyncSession = Depends(get_session)
 ) -> SettingsResponse:
   """Update application settings."""
   try:

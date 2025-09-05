@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
@@ -26,7 +26,7 @@ class SpeakerProfileResponse(BaseModel):
 
 
 @router.get('/speaker-profiles', response_model=list[SpeakerProfileResponse])
-async def list_speaker_profiles(session: Annotated[AsyncSession, Depends(get_session)]) -> list[SpeakerProfileResponse]:
+async def list_speaker_profiles(session: AsyncSession = Depends(get_session)) -> list[SpeakerProfileResponse]:
   """List all available speaker profiles."""
   try:
     profiles = list((await session.execute(select(SpeakerProfile))).scalars().all())
@@ -50,7 +50,7 @@ async def list_speaker_profiles(session: Annotated[AsyncSession, Depends(get_ses
 
 @router.get('/speaker-profiles/{profile_name}', response_model=SpeakerProfileResponse)
 async def get_speaker_profile(
-  profile_name: str, session: Annotated[AsyncSession, Depends(get_session)]
+  profile_name: str, session: AsyncSession = Depends(get_session)
 ) -> SpeakerProfileResponse:
   """Get a specific speaker profile by name."""
   try:
@@ -87,7 +87,7 @@ class SpeakerProfileCreate(BaseModel):
 
 @router.post('/speaker-profiles', response_model=SpeakerProfileResponse)
 async def create_speaker_profile(
-  profile_data: SpeakerProfileCreate, session: Annotated[AsyncSession, Depends(get_session)]
+  profile_data: SpeakerProfileCreate, session: AsyncSession = Depends(get_session)
 ) -> SpeakerProfileResponse:
   """Create a new speaker profile."""
   try:
@@ -118,7 +118,7 @@ async def create_speaker_profile(
 
 @router.put('/speaker-profiles/{profile_id}', response_model=SpeakerProfileResponse)
 async def update_speaker_profile(
-  profile_id: str, profile_data: SpeakerProfileCreate, session: Annotated[AsyncSession, Depends(get_session)]
+  profile_id: str, profile_data: SpeakerProfileCreate, session: AsyncSession = Depends(get_session)
 ) -> SpeakerProfileResponse:
   """Update an existing speaker profile."""
   try:
@@ -157,9 +157,7 @@ async def update_speaker_profile(
 
 
 @router.delete('/speaker-profiles/{profile_id}')
-async def delete_speaker_profile(
-  profile_id: str, session: Annotated[AsyncSession, Depends(get_session)]
-) -> dict[str, str]:
+async def delete_speaker_profile(profile_id: str, session: AsyncSession = Depends(get_session)) -> dict[str, str]:
   """Delete a speaker profile."""
   try:
     profile = (
@@ -183,7 +181,7 @@ async def delete_speaker_profile(
 
 @router.post('/speaker-profiles/{profile_id}/duplicate', response_model=SpeakerProfileResponse)
 async def duplicate_speaker_profile(
-  profile_id: str, session: Annotated[AsyncSession, Depends(get_session)]
+  profile_id: str, session: AsyncSession = Depends(get_session)
 ) -> SpeakerProfileResponse:
   """Duplicate a speaker profile."""
   try:

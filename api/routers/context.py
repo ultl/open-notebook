@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
@@ -19,7 +19,7 @@ router = APIRouter()
 
 @router.post('/notebooks/{notebook_id}/context', response_model=ContextResponse)
 async def get_notebook_context(
-  notebook_id: str, context_request: ContextRequest, session: Annotated[AsyncSession, Depends(get_session)]
+  notebook_id: str, context_request: ContextRequest, session: AsyncSession = Depends(get_session)
 ) -> ContextResponse:
   """Get context for a notebook based on configuration."""
   try:

@@ -46,7 +46,7 @@ async def get_notes(
 
 
 @router.post('/notes', response_model=NoteResponse)
-async def create_note(note_data: NoteCreate, session: Annotated[AsyncSession, Depends(get_session)]) -> NoteResponse:
+async def create_note(note_data: NoteCreate, session: AsyncSession = Depends(get_session)) -> NoteResponse:
   """Create a new note."""
   try:
     # Auto-generate title if not provided and it's an AI note
@@ -84,7 +84,7 @@ async def create_note(note_data: NoteCreate, session: Annotated[AsyncSession, De
 
 
 @router.get('/notes/{note_id}', response_model=NoteResponse)
-async def get_note(note_id: str, session: Annotated[AsyncSession, Depends(get_session)]) -> NoteResponse:
+async def get_note(note_id: str, session: AsyncSession = Depends(get_session)) -> NoteResponse:
   """Get a specific note by ID."""
   try:
     result = await session.execute(select(Note).where(Note.id == note_id))
@@ -109,7 +109,7 @@ async def get_note(note_id: str, session: Annotated[AsyncSession, Depends(get_se
 
 @router.put('/notes/{note_id}', response_model=NoteResponse)
 async def update_note(
-  note_id: str, note_update: NoteUpdate, session: Annotated[AsyncSession, Depends(get_session)]
+  note_id: str, note_update: NoteUpdate, session: AsyncSession = Depends(get_session)
 ) -> NoteResponse:
   """Update a note."""
   try:
@@ -148,7 +148,7 @@ async def update_note(
 
 
 @router.delete('/notes/{note_id}')
-async def delete_note(note_id: str, session: Annotated[AsyncSession, Depends(get_session)]) -> dict[str, str]:
+async def delete_note(note_id: str, session: AsyncSession = Depends(get_session)) -> dict[str, str]:
   """Delete a note."""
   try:
     result = await session.execute(select(Note).where(Note.id == note_id))
