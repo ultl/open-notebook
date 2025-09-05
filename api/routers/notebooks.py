@@ -1,11 +1,18 @@
-from typing import Annotated
+from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from typing import TYPE_CHECKING, Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
+from sqlalchemy import select
+from sqlalchemy.exc import NoResultFound
 
 from api.models import NotebookCreate, NotebookResponse, NotebookUpdate
-from open_notebook.domain.notebook import Notebook
-from open_notebook.exceptions import InvalidInputError
+from open_notebook.database.models import Notebook
+from open_notebook.database.sql import get_session
+
+if TYPE_CHECKING:
+  from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 
@@ -14,10 +21,13 @@ router = APIRouter()
 async def get_notebooks(
   archived: Annotated[bool | None, Query(description='Filter by archived status')] = None,
   order_by: Annotated[str, Query(description='Order by field and direction')] = 'updated desc',
-):
+  session: AsyncSession = Depends(get_session),
+) -> list[NotebookResponse]:
   """Get all notebooks with optional filtering and ordering."""
   try:
-    notebooks = await Notebook.get_all(order_by=order_by)
+    stmt = select(Notebook)
+    result = await session.execute(stmt)
+    notebooks = list(result.scalars().all())
 
     # Filter by archived status if specified
     if archived is not None:
@@ -25,7 +35,7 @@ async def get_notebooks(
 
     return [
       NotebookResponse(
-        id=nb.id,
+        id=str(nb.id),
         name=nb.name,
         description=nb.description,
         archived=nb.archived or False,
@@ -40,40 +50,41 @@ async def get_notebooks(
 
 
 @router.post('/notebooks', response_model=NotebookResponse)
-async def create_notebook(notebook: NotebookCreate):
+async def create_notebook(
+  notebook: NotebookCreate, session: Annotated[AsyncSession, Depends(get_session)]
+) -> NotebookResponse:
   """Create a new notebook."""
   try:
-    new_notebook = Notebook(
-      name=notebook.name,
-      description=notebook.description,
-    )
-    await new_notebook.save()
+    new_notebook = Notebook(name=notebook.name, description=notebook.description)
+    session.add(new_notebook)
+    await session.commit()
+    await session.refresh(new_notebook)
 
     return NotebookResponse(
-      id=new_notebook.id,
+      id=str(new_notebook.id),
       name=new_notebook.name,
       description=new_notebook.description,
       archived=new_notebook.archived or False,
       created=str(new_notebook.created),
       updated=str(new_notebook.updated),
     )
-  except InvalidInputError as e:
-    raise HTTPException(status_code=400, detail=str(e))
   except Exception as e:
     logger.error(f'Error creating notebook: {e!s}')
     raise HTTPException(status_code=500, detail=f'Error creating notebook: {e!s}')
 
 
 @router.get('/notebooks/{notebook_id}', response_model=NotebookResponse)
-async def get_notebook(notebook_id: str):
+async def get_notebook(notebook_id: str, session: Annotated[AsyncSession, Depends(get_session)]) -> NotebookResponse:
   """Get a specific notebook by ID."""
   try:
-    notebook = await Notebook.get(notebook_id)
-    if not notebook:
+    try:
+      stmt = select(Notebook).where(Notebook.id == notebook_id)
+      notebook = (await session.execute(stmt)).scalar_one()
+    except NoResultFound:
       raise HTTPException(status_code=404, detail='Notebook not found')
 
     return NotebookResponse(
-      id=notebook.id,
+      id=str(notebook.id),
       name=notebook.name,
       description=notebook.description,
       archived=notebook.archived or False,
@@ -88,11 +99,15 @@ async def get_notebook(notebook_id: str):
 
 
 @router.put('/notebooks/{notebook_id}', response_model=NotebookResponse)
-async def update_notebook(notebook_id: str, notebook_update: NotebookUpdate):
+async def update_notebook(
+  notebook_id: str, notebook_update: NotebookUpdate, session: Annotated[AsyncSession, Depends(get_session)]
+) -> NotebookResponse:
   """Update a notebook."""
   try:
-    notebook = await Notebook.get(notebook_id)
-    if not notebook:
+    try:
+      stmt = select(Notebook).where(Notebook.id == notebook_id)
+      notebook = (await session.execute(stmt)).scalar_one()
+    except NoResultFound:
       raise HTTPException(status_code=404, detail='Notebook not found')
 
     # Update only provided fields
@@ -103,10 +118,14 @@ async def update_notebook(notebook_id: str, notebook_update: NotebookUpdate):
     if notebook_update.archived is not None:
       notebook.archived = notebook_update.archived
 
-    await notebook.save()
+    # Touch updated timestamp
+    notebook.updated = notebook.updated
+    session.add(notebook)
+    await session.commit()
+    await session.refresh(notebook)
 
     return NotebookResponse(
-      id=notebook.id,
+      id=str(notebook.id),
       name=notebook.name,
       description=notebook.description,
       archived=notebook.archived or False,
@@ -115,22 +134,23 @@ async def update_notebook(notebook_id: str, notebook_update: NotebookUpdate):
     )
   except HTTPException:
     raise
-  except InvalidInputError as e:
-    raise HTTPException(status_code=400, detail=str(e))
   except Exception as e:
     logger.error(f'Error updating notebook {notebook_id}: {e!s}')
     raise HTTPException(status_code=500, detail=f'Error updating notebook: {e!s}')
 
 
 @router.delete('/notebooks/{notebook_id}')
-async def delete_notebook(notebook_id: str):
+async def delete_notebook(notebook_id: str, session: Annotated[AsyncSession, Depends(get_session)]) -> dict[str, str]:
   """Delete a notebook."""
   try:
-    notebook = await Notebook.get(notebook_id)
-    if not notebook:
+    try:
+      stmt = select(Notebook).where(Notebook.id == notebook_id)
+      notebook = (await session.execute(stmt)).scalar_one()
+    except NoResultFound:
       raise HTTPException(status_code=404, detail='Notebook not found')
 
-    await notebook.delete()
+    await session.delete(notebook)
+    await session.commit()
 
     return {'message': 'Notebook deleted successfully'}
   except HTTPException:

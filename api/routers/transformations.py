@@ -1,5 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Annotated
+
+from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
+from sqlalchemy import select
 
 from api.models import (
   TransformationCreate,
@@ -8,23 +13,26 @@ from api.models import (
   TransformationResponse,
   TransformationUpdate,
 )
-from open_notebook.domain.models import Model
-from open_notebook.domain.transformation import Transformation
-from open_notebook.exceptions import InvalidInputError
+from open_notebook.database.models import AIModel, Transformation
+from open_notebook.database.sql import get_session
 from open_notebook.graphs.transformation import graph as transformation_graph
+
+if TYPE_CHECKING:
+  from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 
 
 @router.get('/transformations', response_model=list[TransformationResponse])
-async def get_transformations():
+async def get_transformations(session: Annotated[AsyncSession, Depends(get_session)]) -> list[TransformationResponse]:
   """Get all transformations."""
   try:
-    transformations = await Transformation.get_all(order_by='name asc')
+    result = await session.execute(select(Transformation))
+    transformations = list(result.scalars().all())
 
     return [
       TransformationResponse(
-        id=transformation.id,
+        id=str(transformation.id),
         name=transformation.name,
         title=transformation.title,
         description=transformation.description,
@@ -41,7 +49,9 @@ async def get_transformations():
 
 
 @router.post('/transformations', response_model=TransformationResponse)
-async def create_transformation(transformation_data: TransformationCreate):
+async def create_transformation(
+  transformation_data: TransformationCreate, session: Annotated[AsyncSession, Depends(get_session)]
+) -> TransformationResponse:
   """Create a new transformation."""
   try:
     new_transformation = Transformation(
@@ -51,10 +61,12 @@ async def create_transformation(transformation_data: TransformationCreate):
       prompt=transformation_data.prompt,
       apply_default=transformation_data.apply_default,
     )
-    await new_transformation.save()
+    session.add(new_transformation)
+    await session.commit()
+    await session.refresh(new_transformation)
 
     return TransformationResponse(
-      id=new_transformation.id,
+      id=str(new_transformation.id),
       name=new_transformation.name,
       title=new_transformation.title,
       description=new_transformation.description,
@@ -63,23 +75,24 @@ async def create_transformation(transformation_data: TransformationCreate):
       created=str(new_transformation.created),
       updated=str(new_transformation.updated),
     )
-  except InvalidInputError as e:
-    raise HTTPException(status_code=400, detail=str(e))
   except Exception as e:
     logger.error(f'Error creating transformation: {e!s}')
     raise HTTPException(status_code=500, detail=f'Error creating transformation: {e!s}')
 
 
 @router.get('/transformations/{transformation_id}', response_model=TransformationResponse)
-async def get_transformation(transformation_id: str):
+async def get_transformation(
+  transformation_id: str, session: Annotated[AsyncSession, Depends(get_session)]
+) -> TransformationResponse:
   """Get a specific transformation by ID."""
   try:
-    transformation = await Transformation.get(transformation_id)
-    if not transformation:
+    result = await session.execute(select(Transformation).where(Transformation.id == transformation_id))
+    transformation = result.scalar_one_or_none()
+    if transformation is None:
       raise HTTPException(status_code=404, detail='Transformation not found')
 
     return TransformationResponse(
-      id=transformation.id,
+      id=str(transformation.id),
       name=transformation.name,
       title=transformation.title,
       description=transformation.description,
@@ -96,11 +109,16 @@ async def get_transformation(transformation_id: str):
 
 
 @router.put('/transformations/{transformation_id}', response_model=TransformationResponse)
-async def update_transformation(transformation_id: str, transformation_update: TransformationUpdate):
+async def update_transformation(
+  transformation_id: str,
+  transformation_update: TransformationUpdate,
+  session: Annotated[AsyncSession, Depends(get_session)],
+) -> TransformationResponse:
   """Update a transformation."""
   try:
-    transformation = await Transformation.get(transformation_id)
-    if not transformation:
+    result = await session.execute(select(Transformation).where(Transformation.id == transformation_id))
+    transformation = result.scalar_one_or_none()
+    if transformation is None:
       raise HTTPException(status_code=404, detail='Transformation not found')
 
     # Update only provided fields
@@ -115,10 +133,12 @@ async def update_transformation(transformation_id: str, transformation_update: T
     if transformation_update.apply_default is not None:
       transformation.apply_default = transformation_update.apply_default
 
-    await transformation.save()
+    session.add(transformation)
+    await session.commit()
+    await session.refresh(transformation)
 
     return TransformationResponse(
-      id=transformation.id,
+      id=str(transformation.id),
       name=transformation.name,
       title=transformation.title,
       description=transformation.description,
@@ -137,14 +157,18 @@ async def update_transformation(transformation_id: str, transformation_update: T
 
 
 @router.delete('/transformations/{transformation_id}')
-async def delete_transformation(transformation_id: str):
+async def delete_transformation(
+  transformation_id: str, session: Annotated[AsyncSession, Depends(get_session)]
+) -> dict[str, str]:
   """Delete a transformation."""
   try:
-    transformation = await Transformation.get(transformation_id)
-    if not transformation:
+    result = await session.execute(select(Transformation).where(Transformation.id == transformation_id))
+    transformation = result.scalar_one_or_none()
+    if transformation is None:
       raise HTTPException(status_code=404, detail='Transformation not found')
 
-    await transformation.delete()
+    await session.delete(transformation)
+    await session.commit()
 
     return {'message': 'Transformation deleted successfully'}
   except HTTPException:
@@ -155,26 +179,35 @@ async def delete_transformation(transformation_id: str):
 
 
 @router.post('/transformations/execute', response_model=TransformationExecuteResponse)
-async def execute_transformation(execute_request: TransformationExecuteRequest):
+async def execute_transformation(
+  execute_request: TransformationExecuteRequest, session: Annotated[AsyncSession, Depends(get_session)]
+) -> TransformationExecuteResponse:
   """Execute a transformation on input text."""
   try:
     # Validate transformation exists
-    transformation = await Transformation.get(execute_request.transformation_id)
-    if not transformation:
+    result = await session.execute(select(Transformation).where(Transformation.id == execute_request.transformation_id))
+    transformation = result.scalar_one_or_none()
+    if transformation is None:
       raise HTTPException(status_code=404, detail='Transformation not found')
 
     # Validate model exists
-    model = await Model.get(execute_request.model_id)
-    if not model:
+    model_res = await session.execute(select(AIModel).where(AIModel.id == execute_request.model_id))
+    model = model_res.scalar_one_or_none()
+    if model is None:
       raise HTTPException(status_code=404, detail='Model not found')
 
     # Execute the transformation
     result = await transformation_graph.ainvoke(
       {
         'input_text': execute_request.input_text,
-        'transformation': transformation,
+        'transformation': {
+          'name': transformation.name,
+          'title': transformation.title,
+          'description': transformation.description,
+          'prompt': transformation.prompt,
+        },
       },
-      config={'configurable': {'model_id': execute_request.model_id}},
+      config={'configurable': {'model_id': model.name}},
     )
 
     return TransformationExecuteResponse(

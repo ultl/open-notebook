@@ -1,8 +1,17 @@
-from fastapi import APIRouter, HTTPException
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Annotated
+
+from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
-from open_notebook.domain.podcast import EpisodeProfile
+from open_notebook.database.models import EpisodeProfile
+from open_notebook.database.sql import get_session
+
+if TYPE_CHECKING:
+  from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 
@@ -21,10 +30,10 @@ class EpisodeProfileResponse(BaseModel):
 
 
 @router.get('/episode-profiles', response_model=list[EpisodeProfileResponse])
-async def list_episode_profiles():
+async def list_episode_profiles(session: Annotated[AsyncSession, Depends(get_session)]) -> list[EpisodeProfileResponse]:
   """List all available episode profiles."""
   try:
-    profiles = await EpisodeProfile.get_all(order_by='name asc')
+    profiles = list((await session.execute(select(EpisodeProfile))).scalars().all())
 
     return [
       EpisodeProfileResponse(
@@ -48,10 +57,14 @@ async def list_episode_profiles():
 
 
 @router.get('/episode-profiles/{profile_name}', response_model=EpisodeProfileResponse)
-async def get_episode_profile(profile_name: str):
+async def get_episode_profile(
+  profile_name: str, session: Annotated[AsyncSession, Depends(get_session)]
+) -> EpisodeProfileResponse:
   """Get a specific episode profile by name."""
   try:
-    profile = await EpisodeProfile.get_by_name(profile_name)
+    profile = (
+      await session.execute(select(EpisodeProfile).where(EpisodeProfile.name == profile_name))
+    ).scalar_one_or_none()
 
     if not profile:
       raise HTTPException(status_code=404, detail=f"Episode profile '{profile_name}' not found")
@@ -89,7 +102,9 @@ class EpisodeProfileCreate(BaseModel):
 
 
 @router.post('/episode-profiles', response_model=EpisodeProfileResponse)
-async def create_episode_profile(profile_data: EpisodeProfileCreate):
+async def create_episode_profile(
+  profile_data: EpisodeProfileCreate, session: Annotated[AsyncSession, Depends(get_session)]
+) -> EpisodeProfileResponse:
   """Create a new episode profile."""
   try:
     profile = EpisodeProfile(
@@ -103,8 +118,9 @@ async def create_episode_profile(profile_data: EpisodeProfileCreate):
       default_briefing=profile_data.default_briefing,
       num_segments=profile_data.num_segments,
     )
-
-    await profile.save()
+    session.add(profile)
+    await session.commit()
+    await session.refresh(profile)
 
     return EpisodeProfileResponse(
       id=str(profile.id),
@@ -125,10 +141,14 @@ async def create_episode_profile(profile_data: EpisodeProfileCreate):
 
 
 @router.put('/episode-profiles/{profile_id}', response_model=EpisodeProfileResponse)
-async def update_episode_profile(profile_id: str, profile_data: EpisodeProfileCreate):
+async def update_episode_profile(
+  profile_id: str, profile_data: EpisodeProfileCreate, session: Annotated[AsyncSession, Depends(get_session)]
+) -> EpisodeProfileResponse:
   """Update an existing episode profile."""
   try:
-    profile = await EpisodeProfile.get(profile_id)
+    profile = (
+      await session.execute(select(EpisodeProfile).where(EpisodeProfile.id == profile_id))
+    ).scalar_one_or_none()
 
     if not profile:
       raise HTTPException(status_code=404, detail=f"Episode profile '{profile_id}' not found")
@@ -144,7 +164,9 @@ async def update_episode_profile(profile_id: str, profile_data: EpisodeProfileCr
     profile.default_briefing = profile_data.default_briefing
     profile.num_segments = profile_data.num_segments
 
-    await profile.save()
+    session.add(profile)
+    await session.commit()
+    await session.refresh(profile)
 
     return EpisodeProfileResponse(
       id=str(profile.id),
@@ -167,15 +189,20 @@ async def update_episode_profile(profile_id: str, profile_data: EpisodeProfileCr
 
 
 @router.delete('/episode-profiles/{profile_id}')
-async def delete_episode_profile(profile_id: str):
+async def delete_episode_profile(
+  profile_id: str, session: Annotated[AsyncSession, Depends(get_session)]
+) -> dict[str, str]:
   """Delete an episode profile."""
   try:
-    profile = await EpisodeProfile.get(profile_id)
+    profile = (
+      await session.execute(select(EpisodeProfile).where(EpisodeProfile.id == profile_id))
+    ).scalar_one_or_none()
 
     if not profile:
       raise HTTPException(status_code=404, detail=f"Episode profile '{profile_id}' not found")
 
-    await profile.delete()
+    await session.delete(profile)
+    await session.commit()
 
     return {'message': 'Episode profile deleted successfully'}
 
@@ -187,10 +214,14 @@ async def delete_episode_profile(profile_id: str):
 
 
 @router.post('/episode-profiles/{profile_id}/duplicate', response_model=EpisodeProfileResponse)
-async def duplicate_episode_profile(profile_id: str):
+async def duplicate_episode_profile(
+  profile_id: str, session: Annotated[AsyncSession, Depends(get_session)]
+) -> EpisodeProfileResponse:
   """Duplicate an episode profile."""
   try:
-    original = await EpisodeProfile.get(profile_id)
+    original = (
+      await session.execute(select(EpisodeProfile).where(EpisodeProfile.id == profile_id))
+    ).scalar_one_or_none()
 
     if not original:
       raise HTTPException(status_code=404, detail=f"Episode profile '{profile_id}' not found")
@@ -207,8 +238,9 @@ async def duplicate_episode_profile(profile_id: str):
       default_briefing=original.default_briefing,
       num_segments=original.num_segments,
     )
-
-    await duplicate.save()
+    session.add(duplicate)
+    await session.commit()
+    await session.refresh(duplicate)
 
     return EpisodeProfileResponse(
       id=str(duplicate.id),

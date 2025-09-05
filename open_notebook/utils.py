@@ -4,7 +4,7 @@ import unicodedata
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
-def token_count(input_string) -> int:
+def token_count(input_string: str) -> int:
   """Count the number of tokens in the input string using the 'o200k_base' encoding.
 
   Args:
@@ -20,7 +20,7 @@ def token_count(input_string) -> int:
   return len(tokens)
 
 
-def token_cost(token_count, cost_per_million=0.150) -> float:
+def token_cost(token_count: int, cost_per_million: float = 0.150) -> float:
   """Calculate the cost of tokens based on the token count and cost per million tokens.
 
   Args:
@@ -33,7 +33,7 @@ def token_cost(token_count, cost_per_million=0.150) -> float:
   return cost_per_million * (token_count / 1_000_000)
 
 
-def split_text(txt: str, chunk_size=500):
+def split_text(txt: str, chunk_size: int = 500) -> list[str]:
   """Split the input text into chunks.
 
   Args:

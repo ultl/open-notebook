@@ -1,18 +1,32 @@
-from fastapi import APIRouter, HTTPException
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Annotated
+
+from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
+from sqlalchemy import select
 
 from api.models import SettingsResponse, SettingsUpdate
-from open_notebook.domain.content_settings import ContentSettings
-from open_notebook.exceptions import InvalidInputError
+from open_notebook.database.models import ContentSettings
+from open_notebook.database.sql import get_session
+
+if TYPE_CHECKING:
+  from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 
 
 @router.get('/settings', response_model=SettingsResponse)
-async def get_settings():
+async def get_settings(session: Annotated[AsyncSession, Depends(get_session)]) -> SettingsResponse:
   """Get all application settings."""
   try:
-    settings = await ContentSettings.get_instance()
+    result = await session.execute(select(ContentSettings).where(ContentSettings.id == 1))
+    settings = result.scalar_one_or_none()
+    if settings is None:
+      settings = ContentSettings(id=1)
+      session.add(settings)
+      await session.commit()
+      await session.refresh(settings)
 
     return SettingsResponse(
       default_content_processing_engine_doc=settings.default_content_processing_engine_doc,
@@ -27,10 +41,16 @@ async def get_settings():
 
 
 @router.put('/settings', response_model=SettingsResponse)
-async def update_settings(settings_update: SettingsUpdate):
+async def update_settings(
+  settings_update: SettingsUpdate, session: Annotated[AsyncSession, Depends(get_session)]
+) -> SettingsResponse:
   """Update application settings."""
   try:
-    settings = await ContentSettings.get_instance()
+    result = await session.execute(select(ContentSettings).where(ContentSettings.id == 1))
+    settings = result.scalar_one_or_none()
+    if settings is None:
+      settings = ContentSettings(id=1)
+      session.add(settings)
 
     # Update only provided fields
     if settings_update.default_content_processing_engine_doc is not None:
@@ -44,7 +64,9 @@ async def update_settings(settings_update: SettingsUpdate):
     if settings_update.youtube_preferred_languages is not None:
       settings.youtube_preferred_languages = settings_update.youtube_preferred_languages
 
-    await settings.update()
+    session.add(settings)
+    await session.commit()
+    await session.refresh(settings)
 
     return SettingsResponse(
       default_content_processing_engine_doc=settings.default_content_processing_engine_doc,
@@ -55,8 +77,6 @@ async def update_settings(settings_update: SettingsUpdate):
     )
   except HTTPException:
     raise
-  except InvalidInputError as e:
-    raise HTTPException(status_code=400, detail=str(e))
   except Exception as e:
     logger.error(f'Error updating settings: {e!s}')
     raise HTTPException(status_code=500, detail=f'Error updating settings: {e!s}')

@@ -2,7 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.auth import PasswordAuthMiddleware
-from api.routers import commands as commands_router
 from api.routers import (
   context,
   embedding,
@@ -18,16 +17,12 @@ from api.routers import (
   speaker_profiles,
   transformations,
 )
+from open_notebook.database.seed import seed_defaults
+from open_notebook.database.sql import SessionLocal, init_db
+from open_notebook.logging import configure_logging
+from open_notebook.services.podcast_worker import start_worker, stop_worker
 
-# Import commands to register them in the API process
-try:
-  from loguru import logger
-
-  logger.info('Commands imported in API process')
-except Exception as e:
-  from loguru import logger
-
-  logger.error(f'Failed to import commands in API process: {e}')
+configure_logging()
 
 app = FastAPI(
   title='Open Notebook API',
@@ -58,17 +53,32 @@ app.include_router(settings.router, prefix='/api', tags=['settings'])
 app.include_router(context.router, prefix='/api', tags=['context'])
 app.include_router(sources.router, prefix='/api', tags=['sources'])
 app.include_router(insights.router, prefix='/api', tags=['insights'])
-app.include_router(commands_router.router, prefix='/api', tags=['commands'])
 app.include_router(podcasts.router, prefix='/api', tags=['podcasts'])
 app.include_router(episode_profiles.router, prefix='/api', tags=['episode-profiles'])
 app.include_router(speaker_profiles.router, prefix='/api', tags=['speaker-profiles'])
 
 
 @app.get('/')
-async def root():
+async def root() -> dict[str, str]:
   return {'message': 'Open Notebook API is running'}
 
 
 @app.get('/health')
-async def health():
+async def health() -> dict[str, str]:
   return {'status': 'healthy'}
+
+
+@app.on_event('startup')
+async def on_startup() -> None:
+  # Initialize database schema at startup (idempotent)
+  await init_db()
+  # Seed default rows and example profiles
+  async with SessionLocal() as session:
+    await seed_defaults(session)
+  # Start podcast worker
+  start_worker()
+
+
+@app.on_event('shutdown')
+async def on_shutdown() -> None:
+  stop_worker()

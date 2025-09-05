@@ -1,0 +1,28 @@
+[project]
+name = "open-notebook"
+version = "0.0.0"
+description = "Open Notebook API"
+requires-python = ">=3.13"
+dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
+  "httpx",
+  "loguru",
+  "pydantic",
+  "typing-extensions",
+  "sqlmodel",
+  "psycopg[binary]",
+  "python-ai-prompter",
+  "langchain",
+  "langgraph",
+  "pgvector",
+  "sentence-transformers",
+  "langchain-openai",
+  "langchain-text-splitters",
+]
+
+[tool.pyright]
+typeCheckingMode = "basic"
+
+[tool.ruff]
+target-version = "py313"

@@ -1,9 +1,9 @@
 """Episode profiles service layer using API."""
 
 from loguru import logger
+from open_notebook.domain.podcast import EpisodeProfile
 
 from api.client import api_client
-from open_notebook.domain.podcast import EpisodeProfile
 
 
 class EpisodeProfilesService:

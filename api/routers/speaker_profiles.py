@@ -1,10 +1,17 @@
-from typing import Any
+from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from typing import TYPE_CHECKING, Annotated, Any
+
+from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
-from open_notebook.domain.podcast import SpeakerProfile
+from open_notebook.database.models import SpeakerProfile
+from open_notebook.database.sql import get_session
+
+if TYPE_CHECKING:
+  from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 
@@ -19,10 +26,10 @@ class SpeakerProfileResponse(BaseModel):
 
 
 @router.get('/speaker-profiles', response_model=list[SpeakerProfileResponse])
-async def list_speaker_profiles():
+async def list_speaker_profiles(session: Annotated[AsyncSession, Depends(get_session)]) -> list[SpeakerProfileResponse]:
   """List all available speaker profiles."""
   try:
-    profiles = await SpeakerProfile.get_all(order_by='name asc')
+    profiles = list((await session.execute(select(SpeakerProfile))).scalars().all())
 
     return [
       SpeakerProfileResponse(
@@ -42,10 +49,14 @@ async def list_speaker_profiles():
 
 
 @router.get('/speaker-profiles/{profile_name}', response_model=SpeakerProfileResponse)
-async def get_speaker_profile(profile_name: str):
+async def get_speaker_profile(
+  profile_name: str, session: Annotated[AsyncSession, Depends(get_session)]
+) -> SpeakerProfileResponse:
   """Get a specific speaker profile by name."""
   try:
-    profile = await SpeakerProfile.get_by_name(profile_name)
+    profile = (
+      await session.execute(select(SpeakerProfile).where(SpeakerProfile.name == profile_name))
+    ).scalar_one_or_none()
 
     if not profile:
       raise HTTPException(status_code=404, detail=f"Speaker profile '{profile_name}' not found")
@@ -75,7 +86,9 @@ class SpeakerProfileCreate(BaseModel):
 
 
 @router.post('/speaker-profiles', response_model=SpeakerProfileResponse)
-async def create_speaker_profile(profile_data: SpeakerProfileCreate):
+async def create_speaker_profile(
+  profile_data: SpeakerProfileCreate, session: Annotated[AsyncSession, Depends(get_session)]
+) -> SpeakerProfileResponse:
   """Create a new speaker profile."""
   try:
     profile = SpeakerProfile(
@@ -85,8 +98,9 @@ async def create_speaker_profile(profile_data: SpeakerProfileCreate):
       tts_model=profile_data.tts_model,
       speakers=profile_data.speakers,
     )
-
-    await profile.save()
+    session.add(profile)
+    await session.commit()
+    await session.refresh(profile)
 
     return SpeakerProfileResponse(
       id=str(profile.id),
@@ -103,10 +117,14 @@ async def create_speaker_profile(profile_data: SpeakerProfileCreate):
 
 
 @router.put('/speaker-profiles/{profile_id}', response_model=SpeakerProfileResponse)
-async def update_speaker_profile(profile_id: str, profile_data: SpeakerProfileCreate):
+async def update_speaker_profile(
+  profile_id: str, profile_data: SpeakerProfileCreate, session: Annotated[AsyncSession, Depends(get_session)]
+) -> SpeakerProfileResponse:
   """Update an existing speaker profile."""
   try:
-    profile = await SpeakerProfile.get(profile_id)
+    profile = (
+      await session.execute(select(SpeakerProfile).where(SpeakerProfile.id == profile_id))
+    ).scalar_one_or_none()
 
     if not profile:
       raise HTTPException(status_code=404, detail=f"Speaker profile '{profile_id}' not found")
@@ -118,7 +136,9 @@ async def update_speaker_profile(profile_id: str, profile_data: SpeakerProfileCr
     profile.tts_model = profile_data.tts_model
     profile.speakers = profile_data.speakers
 
-    await profile.save()
+    session.add(profile)
+    await session.commit()
+    await session.refresh(profile)
 
     return SpeakerProfileResponse(
       id=str(profile.id),
@@ -137,15 +157,20 @@ async def update_speaker_profile(profile_id: str, profile_data: SpeakerProfileCr
 
 
 @router.delete('/speaker-profiles/{profile_id}')
-async def delete_speaker_profile(profile_id: str):
+async def delete_speaker_profile(
+  profile_id: str, session: Annotated[AsyncSession, Depends(get_session)]
+) -> dict[str, str]:
   """Delete a speaker profile."""
   try:
-    profile = await SpeakerProfile.get(profile_id)
+    profile = (
+      await session.execute(select(SpeakerProfile).where(SpeakerProfile.id == profile_id))
+    ).scalar_one_or_none()
 
     if not profile:
       raise HTTPException(status_code=404, detail=f"Speaker profile '{profile_id}' not found")
 
-    await profile.delete()
+    await session.delete(profile)
+    await session.commit()
 
     return {'message': 'Speaker profile deleted successfully'}
 
@@ -157,10 +182,14 @@ async def delete_speaker_profile(profile_id: str):
 
 
 @router.post('/speaker-profiles/{profile_id}/duplicate', response_model=SpeakerProfileResponse)
-async def duplicate_speaker_profile(profile_id: str):
+async def duplicate_speaker_profile(
+  profile_id: str, session: Annotated[AsyncSession, Depends(get_session)]
+) -> SpeakerProfileResponse:
   """Duplicate a speaker profile."""
   try:
-    original = await SpeakerProfile.get(profile_id)
+    original = (
+      await session.execute(select(SpeakerProfile).where(SpeakerProfile.id == profile_id))
+    ).scalar_one_or_none()
 
     if not original:
       raise HTTPException(status_code=404, detail=f"Speaker profile '{profile_id}' not found")
@@ -173,8 +202,9 @@ async def duplicate_speaker_profile(profile_id: str):
       tts_model=original.tts_model,
       speakers=original.speakers,
     )
-
-    await duplicate.save()
+    session.add(duplicate)
+    await session.commit()
+    await session.refresh(duplicate)
 
     return SpeakerProfileResponse(
       id=str(duplicate.id),

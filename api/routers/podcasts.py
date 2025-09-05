@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from loguru import logger
@@ -27,7 +30,7 @@ class PodcastEpisodeResponse(BaseModel):
 
 
 @router.post('/podcasts/generate', response_model=PodcastGenerationResponse)
-async def generate_podcast(request: PodcastGenerationRequest):
+async def generate_podcast(request: PodcastGenerationRequest) -> PodcastGenerationResponse:
   """Generate a podcast episode using Episode Profiles.
   Returns immediately with job ID for status tracking.
   """
@@ -55,7 +58,7 @@ async def generate_podcast(request: PodcastGenerationRequest):
 
 
 @router.get('/podcasts/jobs/{job_id}')
-async def get_podcast_job_status(job_id: str):
+async def get_podcast_job_status(job_id: str) -> dict[str, Any]:
   """Get the status of a podcast generation job."""
   try:
     return await PodcastService.get_job_status(job_id)
@@ -66,7 +69,7 @@ async def get_podcast_job_status(job_id: str):
 
 
 @router.get('/podcasts/episodes', response_model=list[PodcastEpisodeResponse])
-async def list_podcast_episodes():
+async def list_podcast_episodes() -> list[PodcastEpisodeResponse]:
   """List all podcast episodes."""
   try:
     episodes = await PodcastService.list_episodes()
@@ -111,7 +114,7 @@ async def list_podcast_episodes():
 
 
 @router.get('/podcasts/episodes/{episode_id}', response_model=PodcastEpisodeResponse)
-async def get_podcast_episode(episode_id: str):
+async def get_podcast_episode(episode_id: str) -> PodcastEpisodeResponse:
   """Get a specific podcast episode."""
   try:
     episode = await PodcastService.get_episode(episode_id)
@@ -146,7 +149,7 @@ async def get_podcast_episode(episode_id: str):
 
 
 @router.delete('/podcasts/episodes/{episode_id}')
-async def delete_podcast_episode(episode_id: str):
+async def delete_podcast_episode(episode_id: str) -> dict[str, str]:
   """Delete a podcast episode and its associated audio file."""
   try:
     # Get the episode first to check if it exists and get the audio file path
@@ -163,7 +166,18 @@ async def delete_podcast_episode(episode_id: str):
           logger.warning(f'Failed to delete audio file {audio_path}: {e}')
 
     # Delete the episode from the database
-    await episode.delete()
+    # Minimal deletion handled here to avoid cross-layer coupling
+    from sqlalchemy import select
+
+    from open_notebook.database.models import PodcastEpisode
+    from open_notebook.database.sql import SessionLocal
+
+    async with SessionLocal() as session:
+      res = await session.execute(select(PodcastEpisode).where(PodcastEpisode.id == episode_id))
+      ep = res.scalar_one_or_none()
+      if ep:
+        await session.delete(ep)
+        await session.commit()
 
     logger.info(f'Deleted podcast episode: {episode_id}')
     return {'message': 'Episode deleted successfully', 'episode_id': episode_id}

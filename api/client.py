@@ -153,7 +153,6 @@ class APIClient:
     prompt: str,
     apply_default: bool = False,
   ) -> dict:
-    """Create a new transformation."""
     data = {
       'name': name,
       'title': title,
@@ -200,7 +199,6 @@ class APIClient:
     note_type: str = 'human',
     notebook_id: str | None = None,
   ) -> dict:
-    """Create a new note."""
     data = {
       'content': content,
       'note_type': note_type,
@@ -212,15 +210,12 @@ class APIClient:
     return self._make_request('POST', '/api/notes', json=data)
 
   def get_note(self, note_id: str) -> dict:
-    """Get a specific note."""
     return self._make_request('GET', f'/api/notes/{note_id}')
 
   def update_note(self, note_id: str, **updates) -> dict:
-    """Update a note."""
     return self._make_request('PUT', f'/api/notes/{note_id}', json=updates)
 
   def delete_note(self, note_id: str) -> dict:
-    """Delete a note."""
     return self._make_request('DELETE', f'/api/notes/{note_id}')
 
   # Embedding API methods
@@ -373,5 +368,4 @@ class APIClient:
     return self._make_request('DELETE', f'/api/episode-profiles/{profile_id}')
 
 
-# Global client instance
 api_client = APIClient()
